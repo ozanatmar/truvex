@@ -24,14 +24,30 @@ export default function RestaurantScreen() {
     if (!name.trim() || !session) return;
     setLoading(true);
 
-    // Create location
+    // Check if this manager already used a trial on a previous location
+    const { data: existingLocations } = await supabase
+      .schema('truvex').from('locations')
+      .select('id, trial_ends_at')
+      .eq('manager_id', session.user.id);
+
+    const hasUsedTrial = existingLocations?.some(
+      (loc: any) => loc.trial_ends_at !== null
+    ) ?? false;
+
+    // Only grant a trial to managers who haven't had one before
+    const trialEndsAt = hasUsedTrial
+      ? null
+      : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+
     const { data: location, error: locError } = await supabase
-      .from('truvex.locations')
+      .schema('truvex').from('locations')
       .insert({
         name: name.trim(),
         industry_type: 'restaurant',
         manager_id: session.user.id,
         subscription_tier: 'free',
+        subscription_status: hasUsedTrial ? 'expired' : 'trialing',
+        trial_ends_at: trialEndsAt,
       })
       .select()
       .single();
@@ -43,7 +59,7 @@ export default function RestaurantScreen() {
     }
 
     // Add manager as location_member
-    await supabase.from('truvex.location_members').insert({
+    await supabase.schema('truvex').from('location_members').insert({
       location_id: location.id,
       user_id: session.user.id,
       member_type: 'manager',

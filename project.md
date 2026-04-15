@@ -1,6 +1,6 @@
 # Truvex — Project Reference
 
-Last updated: 2026-04-14
+Last updated: 2026-04-15
 
 ---
 
@@ -148,8 +148,16 @@ All tables live in the `truvex` schema. See `supabase/migrations/001_truvex_sche
 |---|---|
 | `/(worker)/` | Open shifts |
 | `/(worker)/history` | Accepted shift history |
-| `/(worker)/settings` | Mute toggle + sign out |
+| `/(worker)/settings` | Mute toggle + leave location + tutorial |
 | `/no-location` | Not linked to any location |
+
+### Loading / Splash
+Shown during app bootstrap (session check → profile → location lookup). Implemented in `components/LoadingScreen.tsx`.
+- Full-screen background photo (`assets/loading-bg.jpg`) with `ResizeMode.COVER`
+- Dark navy overlay at 40% opacity (`rgba(10,18,38,0.4)`)
+- App icon (`assets/icon.png`) + "Truvex" wordmark centered in upper third
+- Thin white 2px progress bar at the bottom, animates with bootstrap step progress
+- Fades out (500ms opacity transition) once bootstrap completes, revealing the routed screen beneath
 
 ### Web
 | Route | Page |

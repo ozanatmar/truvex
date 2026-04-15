@@ -8,15 +8,12 @@ import {
   RefreshControl,
   ActivityIndicator,
   Alert,
-  Linking,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../lib/store';
 import { CalloutWithRole } from '../../types/database';
 import { formatShiftTime } from '../../lib/utils';
-
-const WEB_URL = 'https://truvex-web.vercel.app';
 
 const STATUS_LABELS: Record<string, string> = {
   open: 'Open',
@@ -45,8 +42,8 @@ export default function ManagerHomeScreen() {
     if (!activeLocation) return;
 
     const { data } = await supabase
-      .from('truvex.callouts')
-      .select('*, role:truvex.roles(*), location:truvex.locations(*)')
+      .schema('truvex').from('callouts')
+      .select('*, role:roles(*), location:locations(*)')
       .eq('location_id', activeLocation.id)
       .in('status', ['open', 'pending_selection'])
       .order('created_at', { ascending: false });
@@ -56,20 +53,12 @@ export default function ManagerHomeScreen() {
     setRefreshing(false);
   }, [activeLocation]);
 
-  // Re-fetch location after returning from upgrade (deep link)
-  const refreshLocation = useCallback(async () => {
-    if (!activeLocation) return;
-    const { data } = await supabase
-      .from('truvex.locations')
-      .select('*')
-      .eq('id', activeLocation.id)
-      .single();
-    if (data) setActiveLocation(data);
-  }, [activeLocation]);
+  // Refresh list every time the screen comes into focus
+  useFocusEffect(useCallback(() => {
+    fetchCallouts();
+  }, [fetchCallouts]));
 
   useEffect(() => {
-    fetchCallouts();
-
     if (!activeLocation) return;
 
     const channel = supabase
@@ -86,24 +75,8 @@ export default function ManagerHomeScreen() {
       )
       .subscribe();
 
-    // Listen for deep link truvex://upgrade-success
-    const sub = Linking.addEventListener('url', ({ url }) => {
-      if (url === 'truvex://upgrade-success') {
-        refreshLocation();
-        Alert.alert('Upgrade successful', 'Your plan is now active.');
-      }
-    });
-
-    return () => {
-      supabase.removeChannel(channel);
-      sub.remove();
-    };
-  }, [activeLocation, fetchCallouts, refreshLocation]);
-
-  function handleUpgrade(tier: 'starter' | 'pro') {
-    const url = `${WEB_URL}/upgrade?location_id=${activeLocation?.id}&tier=${tier}`;
-    Linking.openURL(url);
-  }
+    return () => { supabase.removeChannel(channel); };
+  }, [activeLocation, fetchCallouts]);
 
   async function handleCancel(calloutId: string) {
     Alert.alert('Cancel shift?', 'This will notify any workers who accepted.', [
@@ -113,9 +86,10 @@ export default function ManagerHomeScreen() {
         style: 'destructive',
         onPress: async () => {
           await supabase
-            .from('truvex.callouts')
+            .schema('truvex').from('callouts')
             .update({ status: 'cancelled' })
             .eq('id', calloutId);
+          fetchCallouts();
         },
       },
     ]);
@@ -129,17 +103,30 @@ export default function ManagerHomeScreen() {
     );
   }
 
-  const isFree = activeLocation?.subscription_tier === 'free';
+  const loc = activeLocation as any;
+  const subStatus: string = loc?.subscription_status ?? 'trialing';
+  const tier: string = loc?.subscription_tier ?? 'free';
+  const trialDays = loc?.trial_ends_at
+    ? Math.max(0, Math.ceil((new Date(loc.trial_ends_at).getTime() - Date.now()) / 86400000))
+    : null;
+
+  const showBanner = subStatus === 'trialing' || tier === 'free' || subStatus === 'expired' || subStatus === 'past_due';
+  let bannerText = '';
+  let bannerColor = '#f59e0b';
+  if (subStatus === 'trialing' && trialDays !== null) {
+    bannerText = trialDays > 0 ? `Trial — ${trialDays}d left · Tap Settings to upgrade` : 'Trial ended · Tap Settings to upgrade';
+  } else if (subStatus === 'past_due') {
+    bannerText = 'Payment failed · Update in Settings';
+    bannerColor = '#ef4444';
+  } else if (tier === 'free' || subStatus === 'expired') {
+    bannerText = 'Free plan — notifications off · Tap Settings to upgrade';
+  }
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View>
           <Text style={styles.locationName}>{activeLocation?.name}</Text>
-          <Text style={styles.headerSubtitle}>
-            {activeLocation?.subscription_tier === 'free' ? 'Free plan' :
-             activeLocation?.subscription_tier === 'starter' ? 'Starter' : 'Pro'}
-          </Text>
         </View>
         <TouchableOpacity
           style={styles.postButton}
@@ -149,22 +136,13 @@ export default function ManagerHomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Upgrade banner for free tier */}
-      {isFree && (
-        <View style={styles.upgradeBanner}>
-          <View style={styles.upgradeText}>
-            <Text style={styles.upgradeTitle}>Free plan — notifications off</Text>
-            <Text style={styles.upgradeSubtitle}>Upgrade to send push + SMS to workers</Text>
-          </View>
-          <View style={styles.upgradeButtons}>
-            <TouchableOpacity style={styles.upgradeBtn} onPress={() => handleUpgrade('starter')}>
-              <Text style={styles.upgradeBtnText}>Starter $49</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.upgradeBtn, styles.upgradeBtnPro]} onPress={() => handleUpgrade('pro')}>
-              <Text style={styles.upgradeBtnText}>Pro $99</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+      {showBanner && (
+        <TouchableOpacity
+          style={[styles.banner, { backgroundColor: bannerColor + '22', borderBottomColor: bannerColor + '44' }]}
+          onPress={() => router.push('/(manager)/settings')}
+        >
+          <Text style={[styles.bannerText, { color: bannerColor }]}>{bannerText}</Text>
+        </TouchableOpacity>
       )}
 
       <ScrollView
@@ -236,7 +214,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a2e',
   },
   locationName: { fontSize: 20, fontWeight: '800', color: '#fff' },
-  headerSubtitle: { fontSize: 12, color: '#666', marginTop: 2 },
   postButton: {
     backgroundColor: '#4f46e5',
     borderRadius: 10,
@@ -244,27 +221,12 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   postButtonText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  upgradeBanner: {
-    backgroundColor: '#1a1a2e',
-    borderBottomWidth: 1,
-    borderBottomColor: '#2a2a40',
+  banner: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 10,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
   },
-  upgradeText: { gap: 2 },
-  upgradeTitle: { fontSize: 13, fontWeight: '700', color: '#f59e0b' },
-  upgradeSubtitle: { fontSize: 12, color: '#666' },
-  upgradeButtons: { flexDirection: 'row', gap: 8 },
-  upgradeBtn: {
-    flex: 1,
-    backgroundColor: '#312e81',
-    borderRadius: 8,
-    paddingVertical: 8,
-    alignItems: 'center',
-  },
-  upgradeBtnPro: { backgroundColor: '#4f46e5' },
-  upgradeBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  bannerText: { fontSize: 12, fontWeight: '600' },
   scroll: { flex: 1 },
   scrollContent: { padding: 16, gap: 12 },
   empty: { alignItems: 'center', paddingTop: 80, gap: 8 },

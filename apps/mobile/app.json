@@ -48,7 +48,9 @@
         {
           "contactsPermission": "Allow Truvex to access your contacts to add workers."
         }
-      ]
+      ],
+      "expo-font",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true

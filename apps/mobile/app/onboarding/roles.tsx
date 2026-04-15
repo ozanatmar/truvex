@@ -37,7 +37,7 @@ export default function RolesScreen() {
     if (!activeLocation || roles.length === 0) return;
     setLoading(true);
 
-    const { error } = await supabase.from('truvex.roles').insert(
+    const { error } = await supabase.schema('truvex').from('roles').insert(
       roles.map((name) => ({ location_id: activeLocation.id, name }))
     );
 

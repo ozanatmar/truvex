@@ -36,7 +36,7 @@ export default function WorkerHistoryScreen() {
     if (!session) return;
 
     const { data } = await supabase
-      .from('truvex.callout_responses')
+      .schema('truvex').from('callout_responses')
       .select(`
         *,
         callout:truvex.callouts(

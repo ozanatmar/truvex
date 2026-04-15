@@ -1,29 +1,27 @@
 import { useState } from 'react';
 import { GetServerSideProps } from 'next';
-import { supabaseAdmin } from '../lib/supabase';
-import { stripe, PLANS } from '../lib/stripe';
 import Head from 'next/head';
 
 interface Props {
   locationId: string;
-  tier: 'starter' | 'pro';
-  locationName: string;
+  mode: 'manage' | 'cancel';
 }
 
-export default function UpgradePage({ locationId, tier, locationName }: Props) {
+export default function SubscriptionPage({ locationId, mode }: Props) {
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
-  const [step, setStep] = useState<'phone' | 'otp' | 'checkout'>('phone');
+  const [step, setStep] = useState<'phone' | 'otp' | 'done'>('phone');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [cancelled, setCancelled] = useState(false);
 
-  const plan = PLANS[tier];
+  const title = mode === 'cancel' ? 'Cancel subscription' : 'Manage subscription';
+  const ctaLabel = mode === 'cancel' ? 'Confirm cancellation' : 'Go to billing portal';
 
   async function handleSendOtp() {
     setLoading(true);
     setError('');
-    const digits = phone.replace(/\D/g, '');
-    const e164 = `+1${digits}`;
+    const e164 = `+1${phone.replace(/\D/g, '')}`;
 
     const res = await fetch('/api/auth/send-otp', {
       method: 'POST',
@@ -40,42 +38,77 @@ export default function UpgradePage({ locationId, tier, locationName }: Props) {
     }
   }
 
-  async function handleVerifyOtp() {
+  async function handleVerify() {
     setLoading(true);
     setError('');
-    const digits = phone.replace(/\D/g, '');
-    const e164 = `+1${digits}`;
+    const e164 = `+1${phone.replace(/\D/g, '')}`;
 
-    const res = await fetch('/api/auth/verify-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: e164, token: otp }),
-    });
+    if (mode === 'manage') {
+      const res = await fetch('/api/subscription/portal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: e164, token: otp, location_id: locationId }),
+      });
 
-    if (res.ok) {
-      const { checkoutUrl } = await res.json();
-      window.location.href = checkoutUrl;
+      if (res.ok) {
+        const { portalUrl } = await res.json();
+        window.location.href = portalUrl;
+      } else {
+        const data = await res.json();
+        setError(data.error ?? 'Something went wrong');
+        setLoading(false);
+      }
     } else {
-      const data = await res.json();
-      setError(data.error ?? 'Invalid code');
+      // Cancel mode
+      const res = await fetch('/api/subscription/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: e164, token: otp, location_id: locationId }),
+      });
+
+      setLoading(false);
+      if (res.ok) {
+        setCancelled(true);
+        setStep('done');
+        // Redirect to app after short delay
+        setTimeout(() => {
+          window.location.href = 'truvex://subscription-updated';
+        }, 2000);
+      } else {
+        const data = await res.json();
+        setError(data.error ?? 'Something went wrong');
+      }
     }
-    setLoading(false);
   }
 
   return (
     <>
       <Head>
-        <title>Upgrade to {plan.name} — Truvex</title>
+        <title>{title} — Truvex</title>
       </Head>
       <div style={styles.container}>
         <div style={styles.card}>
           <h1 style={styles.logo}>Truvex</h1>
-          <h2 style={styles.title}>Upgrade {locationName} to {plan.name}</h2>
-          <p style={styles.price}>{plan.price}</p>
+          <h2 style={styles.title}>{title}</h2>
 
-          {step === 'phone' && (
+          {step === 'done' ? (
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ ...styles.label, color: '#10b981', fontSize: 16 }}>
+                {cancelled
+                  ? 'Subscription cancelled. You'll keep access until your billing period ends.'
+                  : 'Done!'}
+              </p>
+              <p style={styles.label}>You can close this tab and return to the app.</p>
+            </div>
+          ) : step === 'phone' ? (
             <>
               <p style={styles.label}>Enter your manager phone number to continue</p>
+              {mode === 'cancel' && (
+                <p style={{ ...styles.label, color: '#f59e0b' }}>
+                  Your subscription will be cancelled at the end of your current billing period.
+                  You'll keep full access until then.
+                </p>
+              )}
               <div style={styles.phoneRow}>
                 <span style={styles.countryCode}>+1</span>
                 <input
@@ -87,13 +120,11 @@ export default function UpgradePage({ locationId, tier, locationName }: Props) {
                 />
               </div>
               {error && <p style={styles.error}>{error}</p>}
-              <button style={styles.button} onClick={handleSendOtp} disabled={loading}>
+              <button style={styles.button} onClick={handleSendOtp} disabled={loading || phone.replace(/\D/g, '').length < 10}>
                 {loading ? 'Sending…' : 'Send verification code'}
               </button>
             </>
-          )}
-
-          {step === 'otp' && (
+          ) : (
             <>
               <p style={styles.label}>Enter the 6-digit code we texted you</p>
               <input
@@ -105,8 +136,15 @@ export default function UpgradePage({ locationId, tier, locationName }: Props) {
                 maxLength={6}
               />
               {error && <p style={styles.error}>{error}</p>}
-              <button style={styles.button} onClick={handleVerifyOtp} disabled={loading || otp.length !== 6}>
-                {loading ? 'Verifying…' : 'Continue to payment'}
+              <button
+                style={mode === 'cancel' ? { ...styles.button, background: '#ef4444' } : styles.button}
+                onClick={handleVerify}
+                disabled={loading || otp.length !== 6}
+              >
+                {loading ? 'Please wait…' : ctaLabel}
+              </button>
+              <button style={styles.ghostButton} onClick={() => setStep('phone')}>
+                Back
               </button>
             </>
           )}
@@ -137,8 +175,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   logo: { color: '#fff', fontSize: 28, fontWeight: 800, margin: 0 },
   title: { color: '#fff', fontSize: 20, fontWeight: 700, margin: 0 },
-  price: { color: '#4f46e5', fontSize: 24, fontWeight: 800, margin: 0 },
-  label: { color: '#aaa', fontSize: 14, margin: 0 },
+  label: { color: '#aaa', fontSize: 14, margin: 0, lineHeight: '1.5' },
   phoneRow: { display: 'flex', alignItems: 'center', gap: 8 },
   countryCode: { color: '#fff', fontSize: 16, fontWeight: 600 },
   input: {
@@ -163,30 +200,28 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     width: '100%',
   },
+  ghostButton: {
+    background: 'transparent',
+    color: '#666',
+    border: 'none',
+    padding: '8px',
+    fontSize: 14,
+    cursor: 'pointer',
+    width: '100%',
+  },
   error: { color: '#ef4444', fontSize: 14, margin: 0 },
 };
 
 export const getServerSideProps: GetServerSideProps = async (ctx) => {
-  const { location_id, tier } = ctx.query;
+  const { location_id } = ctx.query;
+  const mode = 'manage';
 
-  if (!location_id || !tier || (tier !== 'starter' && tier !== 'pro')) {
-    return { notFound: true };
-  }
-
-  const { data: location } = await supabaseAdmin
-    .schema('truvex')
-    .from('locations')
-    .select('name')
-    .eq('id', location_id)
-    .single();
-
-  if (!location) return { notFound: true };
+  if (!location_id) return { notFound: true };
 
   return {
     props: {
       locationId: location_id as string,
-      tier: tier as 'starter' | 'pro',
-      locationName: location.name,
+      mode,
     },
   };
 };

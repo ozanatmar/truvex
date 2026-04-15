@@ -40,7 +40,7 @@ export default function AddWorkerScreen() {
   useEffect(() => {
     if (!activeLocation) return;
     supabase
-      .from('truvex.roles')
+      .schema('truvex').from('roles')
       .select('*')
       .eq('location_id', activeLocation.id)
       .then(({ data }) => { if (data) setRoles(data); });
@@ -59,57 +59,65 @@ export default function AddWorkerScreen() {
 
     const e164 = `+1${digits}`;
 
-    let workerId: string;
-
-    const { data: existing } = await supabase
-      .from('truvex.profiles')
+    // Check if this phone already has a Supabase Auth account (profile exists)
+    const { data: existingProfile } = await supabase
+      .schema('truvex').from('profiles')
       .select('id')
       .eq('phone', e164)
-      .single();
+      .maybeSingle();
 
-    if (existing) {
-      workerId = existing.id;
-    } else {
-      const { data: newProfile, error } = await supabase
-        .from('truvex.profiles')
-        .insert({ phone: e164, name: name.trim() })
-        .select()
-        .single();
+    if (existingProfile) {
+      // Worker already has an account — link them directly
+      const { error: memberError } = await supabase
+        .schema('truvex').from('location_members')
+        .upsert({
+          location_id: activeLocation.id,
+          user_id: existingProfile.id,
+          member_type: 'worker',
+          status: 'active',
+          invited_by: session.user.id,
+          invited_name: name.trim(),
+          primary_role_id: primaryRoleId,
+        });
 
-      if (!newProfile || error) {
+      if (memberError) {
         setLoading(false);
-        Alert.alert('Error', error?.message ?? 'Could not create worker');
+        Alert.alert('Error', memberError.message);
         return;
       }
-      workerId = newProfile.id;
+
+      const roleRows = [
+        { location_id: activeLocation.id, user_id: existingProfile.id, role_id: primaryRoleId, is_primary: true },
+        ...additionalRoleIds.map((rid) => ({
+          location_id: activeLocation.id,
+          user_id: existingProfile.id,
+          role_id: rid,
+          is_primary: false,
+        })),
+      ];
+      await supabase.schema('truvex').from('worker_roles').upsert(roleRows);
+    } else {
+      // Worker hasn't signed up yet — store as pending invite by phone
+      const { error: inviteError } = await supabase
+        .schema('truvex').from('location_members')
+        .upsert({
+          location_id: activeLocation.id,
+          user_id: null,
+          invited_phone: e164,
+          invited_name: name.trim(),
+          primary_role_id: primaryRoleId,
+          additional_role_ids: additionalRoleIds,
+          member_type: 'worker',
+          status: 'pending',
+          invited_by: session.user.id,
+        });
+
+      if (inviteError) {
+        setLoading(false);
+        Alert.alert('Error', inviteError.message);
+        return;
+      }
     }
-
-    const { error: memberError } = await supabase.from('truvex.location_members').upsert({
-      location_id: activeLocation.id,
-      user_id: workerId,
-      member_type: 'worker',
-      status: 'pending',
-      invited_by: session.user.id,
-    });
-
-    if (memberError) {
-      setLoading(false);
-      Alert.alert('Error', memberError.message);
-      return;
-    }
-
-    // Insert all roles
-    const roleRows = [
-      { location_id: activeLocation.id, user_id: workerId, role_id: primaryRoleId, is_primary: true },
-      ...additionalRoleIds.map((rid) => ({
-        location_id: activeLocation.id,
-        user_id: workerId,
-        role_id: rid,
-        is_primary: false,
-      })),
-    ];
-
-    await supabase.from('truvex.worker_roles').upsert(roleRows);
 
     setLoading(false);
     router.back();

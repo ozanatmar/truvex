@@ -55,7 +55,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
 
 export async function savePushToken(userId: string, token: string) {
   const { error } = await supabase
-    .from('truvex.profiles')
+    .schema('truvex').from('profiles')
     .update({ expo_push_token: token })
     .eq('id', userId);
 

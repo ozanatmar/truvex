@@ -41,7 +41,7 @@ export default function FirstWorkerScreen() {
     if (!activeLocation) return;
     setLoadingRoles(true);
     supabase
-      .from('truvex.roles')
+      .schema('truvex').from('roles')
       .select('*')
       .eq('location_id', activeLocation.id)
       .then(({ data }) => {
@@ -76,7 +76,7 @@ export default function FirstWorkerScreen() {
     let workerId: string;
 
     const { data: existing } = await supabase
-      .from('truvex.profiles')
+      .schema('truvex').from('profiles')
       .select('id')
       .eq('phone', e164)
       .single();
@@ -86,7 +86,7 @@ export default function FirstWorkerScreen() {
     } else {
       // Create a placeholder profile — worker will claim it on first login
       const { data: newProfile, error } = await supabase
-        .from('truvex.profiles')
+        .schema('truvex').from('profiles')
         .insert({ phone: e164, name: name.trim() })
         .select()
         .single();
@@ -100,7 +100,7 @@ export default function FirstWorkerScreen() {
     }
 
     // Add to location_members
-    await supabase.from('truvex.location_members').upsert({
+    await supabase.schema('truvex').from('location_members').upsert({
       location_id: activeLocation.id,
       user_id: workerId,
       member_type: 'worker',
@@ -109,7 +109,7 @@ export default function FirstWorkerScreen() {
     });
 
     // Assign primary role
-    await supabase.from('truvex.worker_roles').upsert({
+    await supabase.schema('truvex').from('worker_roles').upsert({
       location_id: activeLocation.id,
       user_id: workerId,
       role_id: selectedRoleId,

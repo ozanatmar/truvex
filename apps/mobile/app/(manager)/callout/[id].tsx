@@ -32,8 +32,8 @@ export default function CalloutDetailScreen() {
     if (!id) return;
 
     const { data: calloutData } = await supabase
-      .from('truvex.callouts')
-      .select('*, role:truvex.roles(*)')
+      .schema('truvex').from('callouts')
+      .select('*, role:roles(*)')
       .eq('id', id)
       .single();
 
@@ -41,8 +41,8 @@ export default function CalloutDetailScreen() {
 
     // Fetch accepted responses with worker profiles
     const { data: responses } = await supabase
-      .from('truvex.callout_responses')
-      .select('*, worker:truvex.profiles(*)')
+      .schema('truvex').from('callout_responses')
+      .select('*, worker:profiles(*)')
       .eq('callout_id', id)
       .eq('response', 'accepted')
       .order('responded_at', { ascending: true });
@@ -52,8 +52,8 @@ export default function CalloutDetailScreen() {
       const enriched = await Promise.all(
         responses.map(async (r: any) => {
           const { data: wr } = await supabase
-            .from('truvex.worker_roles')
-            .select('role:truvex.roles(name)')
+            .schema('truvex').from('worker_roles')
+            .select('role:roles(name)')
             .eq('user_id', r.worker_id)
             .eq('is_primary', true)
             .single();
@@ -104,7 +104,7 @@ export default function CalloutDetailScreen() {
           setSelecting(workerId);
 
           await supabase
-            .from('truvex.callouts')
+            .schema('truvex').from('callouts')
             .update({
               assigned_worker_id: workerId,
               assigned_at: new Date().toISOString(),

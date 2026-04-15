@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import {
   View,
   Text,
@@ -25,33 +26,59 @@ export default function TeamScreen() {
   const fetchWorkers = useCallback(async () => {
     if (!activeLocation) return;
 
-    const { data } = await supabase
-      .from('truvex.location_members')
-      .select(`
-        *,
-        user:truvex.profiles(*),
-        roles:truvex.worker_roles(*, role:truvex.roles(*))
-      `)
+    // Fetch members (no join — avoid RLS join complications)
+    const { data: members, error: membersError } = await supabase
+      .schema('truvex').from('location_members')
+      .select('*')
       .eq('location_id', activeLocation.id)
       .eq('member_type', 'worker')
       .order('created_at', { ascending: true });
 
-    if (data) {
-      setWorkers(
-        data.map((m: any) => ({
-          ...m.user,
-          member: m,
-          roles: m.roles ?? [],
-        }))
-      );
+    if (membersError) {
+      Alert.alert('Fetch error', membersError.message);
+      setLoading(false);
+      setRefreshing(false);
+      return;
     }
+
+    if (!members || members.length === 0) {
+      setWorkers([]);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
+    // Fetch profiles for members that have a user_id
+    const userIds = members.map((m: any) => m.user_id).filter(Boolean);
+    const { data: profiles } = userIds.length > 0
+      ? await supabase.schema('truvex').from('profiles').select('*').in('id', userIds)
+      : { data: [] };
+
+    // Fetch roles
+    const { data: allRoles } = await supabase
+      .schema('truvex').from('worker_roles')
+      .select('*, role:roles(*)')
+      .eq('location_id', activeLocation.id);
+
+    setWorkers(
+      members.map((m: any) => {
+        const profile = (profiles ?? []).find((p: any) => p.id === m.user_id);
+        return {
+          id: profile?.id ?? m.id,
+          name: m.invited_name ?? profile?.name ?? null,
+          phone: profile?.phone ?? m.invited_phone ?? '',
+          member: m,
+          roles: (allRoles ?? []).filter((r: any) => r.user_id === m.user_id),
+        };
+      })
+    );
     setLoading(false);
     setRefreshing(false);
   }, [activeLocation]);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     fetchWorkers();
-  }, [fetchWorkers]);
+  }, [fetchWorkers]));
 
   async function handleRemove(workerId: string, workerName: string) {
     Alert.alert(
@@ -64,13 +91,13 @@ export default function TeamScreen() {
           style: 'destructive',
           onPress: async () => {
             await supabase
-              .from('truvex.location_members')
+              .schema('truvex').from('location_members')
               .delete()
               .eq('location_id', activeLocation!.id)
               .eq('user_id', workerId);
 
             await supabase
-              .from('truvex.worker_roles')
+              .schema('truvex').from('worker_roles')
               .delete()
               .eq('location_id', activeLocation!.id)
               .eq('user_id', workerId);
@@ -84,7 +111,7 @@ export default function TeamScreen() {
 
   async function toggleMute(workerId: string, isMuted: boolean) {
     await supabase
-      .from('truvex.location_members')
+      .schema('truvex').from('location_members')
       .update({ is_muted: !isMuted })
       .eq('location_id', activeLocation!.id)
       .eq('user_id', workerId);

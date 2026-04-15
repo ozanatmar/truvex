@@ -30,8 +30,8 @@ export default function ManagerHistoryScreen() {
     if (!activeLocation) return;
 
     const { data } = await supabase
-      .from('truvex.callouts')
-      .select('*, role:truvex.roles(*), location:truvex.locations(*)')
+      .schema('truvex').from('callouts')
+      .select('*, role:roles(*), location:locations(*)')
       .eq('location_id', activeLocation.id)
       .in('status', ['filled', 'cancelled', 'expired'])
       .order('created_at', { ascending: false })

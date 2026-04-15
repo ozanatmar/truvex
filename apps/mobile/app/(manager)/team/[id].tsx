@@ -34,9 +34,9 @@ export default function EditWorkerScreen() {
     if (!workerId || !activeLocation) return;
 
     Promise.all([
-      supabase.from('truvex.profiles').select('*').eq('id', workerId).single(),
-      supabase.from('truvex.roles').select('*').eq('location_id', activeLocation.id),
-      supabase.from('truvex.worker_roles').select('*').eq('user_id', workerId).eq('location_id', activeLocation.id),
+      supabase.schema('truvex').from('profiles').select('*').eq('id', workerId).single(),
+      supabase.schema('truvex').from('roles').select('*').eq('location_id', activeLocation.id),
+      supabase.schema('truvex').from('worker_roles').select('*').eq('user_id', workerId).eq('location_id', activeLocation.id),
     ]).then(([profileRes, rolesRes, wrRes]) => {
       if (profileRes.data) {
         setProfile(profileRes.data);
@@ -59,12 +59,17 @@ export default function EditWorkerScreen() {
     if (!workerId || !activeLocation) return;
     setSaving(true);
 
-    // Update name
-    await supabase.from('truvex.profiles').update({ name: name.trim() }).eq('id', workerId);
+    // Update profile name (if worker has an account)
+    await supabase.schema('truvex').from('profiles').update({ name: name.trim() }).eq('id', workerId);
+    // Also update invited_name on the membership row (covers pending invites + syncs display name)
+    await supabase.schema('truvex').from('location_members')
+      .update({ invited_name: name.trim() })
+      .eq('location_id', activeLocation.id)
+      .eq('user_id', workerId);
 
     // Replace worker_roles
     await supabase
-      .from('truvex.worker_roles')
+      .schema('truvex').from('worker_roles')
       .delete()
       .eq('user_id', workerId)
       .eq('location_id', activeLocation.id);
@@ -79,7 +84,7 @@ export default function EditWorkerScreen() {
       })),
     ];
 
-    await supabase.from('truvex.worker_roles').insert(newRoles);
+    await supabase.schema('truvex').from('worker_roles').insert(newRoles);
 
     setSaving(false);
     router.back();

@@ -35,6 +35,13 @@ export default function ManagerLayout() {
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>📋</Text>,
         }}
       />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Settings',
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>⚙️</Text>,
+        }}
+      />
       {/* Modal screens — hidden from tab bar */}
       <Tabs.Screen name="post-callout" options={{ href: null }} />
       <Tabs.Screen name="callout/[id]" options={{ href: null }} />

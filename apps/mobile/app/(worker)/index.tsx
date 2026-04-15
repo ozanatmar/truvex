@@ -32,7 +32,7 @@ export default function WorkerHomeScreen() {
 
     // Get all active memberships for this user
     const { data: memberships } = await supabase
-      .from('truvex.location_members')
+      .schema('truvex').from('location_members')
       .select('location_id')
       .eq('user_id', session.user.id)
       .eq('member_type', 'worker')
@@ -49,7 +49,7 @@ export default function WorkerHomeScreen() {
 
     // Get worker's roles across all locations
     const { data: workerRoles } = await supabase
-      .from('truvex.worker_roles')
+      .schema('truvex').from('worker_roles')
       .select('role_id, location_id')
       .eq('user_id', session.user.id);
 
@@ -57,8 +57,8 @@ export default function WorkerHomeScreen() {
 
     // Get open callouts for eligible roles
     const { data: rawCallouts } = await supabase
-      .from('truvex.callouts')
-      .select('*, role:truvex.roles(*), location:truvex.locations(*)')
+      .schema('truvex').from('callouts')
+      .select('*, role:roles(*), location:locations(*)')
       .in('location_id', locationIds)
       .in('status', ['open', 'pending_selection'])
       .or(`role_id.in.(${eligibleRoleIds.join(',')}),open_to_all_roles.eq.true`)
@@ -74,7 +74,7 @@ export default function WorkerHomeScreen() {
     // Get my responses
     const calloutIds = rawCallouts.map((c: any) => c.id);
     const { data: myResponses } = await supabase
-      .from('truvex.callout_responses')
+      .schema('truvex').from('callout_responses')
       .select('callout_id, response')
       .eq('worker_id', session.user.id)
       .in('callout_id', calloutIds);
@@ -114,7 +114,7 @@ export default function WorkerHomeScreen() {
     if (!session) return;
     setResponding(calloutId);
 
-    const { error } = await supabase.from('truvex.callout_responses').upsert({
+    const { error } = await supabase.schema('truvex').from('callout_responses').upsert({
       callout_id: calloutId,
       worker_id: session.user.id,
       response,
@@ -129,7 +129,7 @@ export default function WorkerHomeScreen() {
         const callout = callouts.find((c) => c.id === calloutId);
         if (callout && !callout.first_accepted_at) {
           await supabase
-            .from('truvex.callouts')
+            .schema('truvex').from('callouts')
             .update({
               first_accepted_at: new Date().toISOString(),
               auto_assign_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
@@ -159,7 +159,6 @@ export default function WorkerHomeScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Open Shifts</Text>
-        <Text style={styles.subtitle}>{activeLocation?.name}</Text>
       </View>
 
       <ScrollView

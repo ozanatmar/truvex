@@ -32,6 +32,19 @@ This file is the single source of truth for building Truvex. Read it fully befor
 
 ---
 
+## Notion Page Maintenance Rules
+
+**Update the Notion product page (https://www.notion.so/ozanatmar/Truvex-3428996bf05881f583a7ca3e58ca0aa7) AFTER completing any task that involves a structural change:**
+- New or changed screen → update the relevant section (Screens Reference, Build Status, Decisions Log)
+- New or changed core flow (auth, callout, notification, billing) → update the relevant flow section
+- New or changed monetization logic → update the Monetization section
+- New Stripe webhook event → update the Stripe Webhook Events section
+- Any decision that changes how the product works at a user-facing level → update the Decisions Log
+
+**The same threshold as `project.md`** — bug fixes, styling, and internal refactors do NOT require a Notion update. Only changes that would affect how a new developer or stakeholder understands the product.
+
+---
+
 ## Product Overview
 
 **Truvex** is a mobile app for restaurants that replaces the last-minute callout scramble. When a worker calls in sick, the manager taps one button. The system identifies all workers with a matching role, sends push notifications (+ SMS fallback), and workers accept with one tap. Multiple workers can accept; the manager selects who covers. The callout closes after selection or auto-assigns the first acceptor after 30 minutes if the manager doesn't act.

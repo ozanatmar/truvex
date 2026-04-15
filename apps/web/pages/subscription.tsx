@@ -95,7 +95,7 @@ export default function SubscriptionPage({ locationId, mode }: Props) {
             <div style={{ textAlign: 'center' }}>
               <p style={{ ...styles.label, color: '#10b981', fontSize: 16 }}>
                 {cancelled
-                  ? 'Subscription cancelled. You'll keep access until your billing period ends.'
+                  ? "Subscription cancelled. You'll keep access until your billing period ends."
                   : 'Done!'}
               </p>
               <p style={styles.label}>You can close this tab and return to the app.</p>

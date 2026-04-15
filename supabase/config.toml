@@ -1,0 +1,38 @@
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "truvex", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["truvex://"]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.sms]
+enabled = true
+provider = "twilio"
+
+[auth.sms.twilio]
+account_sid = "env(TWILIO_ACCOUNT_SID)"
+message_service_sid = "env(TWILIO_MESSAGE_SERVICE_SID)"
+auth_token = "env(TWILIO_AUTH_TOKEN)"

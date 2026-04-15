@@ -1,0 +1,14 @@
+{
+  "name": "truvex",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/mobile",
+    "apps/web"
+  ],
+  "scripts": {
+    "mobile": "cd apps/mobile && npx expo start",
+    "web": "cd apps/web && npm run dev",
+    "migrate": "npx supabase db push"
+  }
+}

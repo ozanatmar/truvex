@@ -1,0 +1,12 @@
+node_modules/
+.expo/
+dist/
+.next/
+out/
+*.env
+*.env.local
+!*.env.example
+!*.env.local.example
+.DS_Store
+*.log
+.supabase/

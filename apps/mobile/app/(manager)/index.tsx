@@ -8,12 +8,15 @@ import {
   RefreshControl,
   ActivityIndicator,
   Alert,
+  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../lib/store';
 import { CalloutWithRole } from '../../types/database';
 import { formatShiftTime } from '../../lib/utils';
+
+const WEB_URL = 'https://truvex-web.vercel.app';
 
 const STATUS_LABELS: Record<string, string> = {
   open: 'Open',
@@ -33,7 +36,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function ManagerHomeScreen() {
   const router = useRouter();
-  const { activeLocation, session } = useStore();
+  const { activeLocation, setActiveLocation } = useStore();
   const [callouts, setCallouts] = useState<CalloutWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -53,12 +56,22 @@ export default function ManagerHomeScreen() {
     setRefreshing(false);
   }, [activeLocation]);
 
+  // Re-fetch location after returning from upgrade (deep link)
+  const refreshLocation = useCallback(async () => {
+    if (!activeLocation) return;
+    const { data } = await supabase
+      .from('truvex.locations')
+      .select('*')
+      .eq('id', activeLocation.id)
+      .single();
+    if (data) setActiveLocation(data);
+  }, [activeLocation]);
+
   useEffect(() => {
     fetchCallouts();
 
     if (!activeLocation) return;
 
-    // Realtime subscription
     const channel = supabase
       .channel('manager-callouts')
       .on(
@@ -73,10 +86,24 @@ export default function ManagerHomeScreen() {
       )
       .subscribe();
 
+    // Listen for deep link truvex://upgrade-success
+    const sub = Linking.addEventListener('url', ({ url }) => {
+      if (url === 'truvex://upgrade-success') {
+        refreshLocation();
+        Alert.alert('Upgrade successful', 'Your plan is now active.');
+      }
+    });
+
     return () => {
       supabase.removeChannel(channel);
+      sub.remove();
     };
-  }, [activeLocation, fetchCallouts]);
+  }, [activeLocation, fetchCallouts, refreshLocation]);
+
+  function handleUpgrade(tier: 'starter' | 'pro') {
+    const url = `${WEB_URL}/upgrade?location_id=${activeLocation?.id}&tier=${tier}`;
+    Linking.openURL(url);
+  }
 
   async function handleCancel(calloutId: string) {
     Alert.alert('Cancel shift?', 'This will notify any workers who accepted.', [
@@ -102,12 +129,17 @@ export default function ManagerHomeScreen() {
     );
   }
 
+  const isFree = activeLocation?.subscription_tier === 'free';
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View>
           <Text style={styles.locationName}>{activeLocation?.name}</Text>
-          <Text style={styles.headerSubtitle}>Manager</Text>
+          <Text style={styles.headerSubtitle}>
+            {activeLocation?.subscription_tier === 'free' ? 'Free plan' :
+             activeLocation?.subscription_tier === 'starter' ? 'Starter' : 'Pro'}
+          </Text>
         </View>
         <TouchableOpacity
           style={styles.postButton}
@@ -116,6 +148,24 @@ export default function ManagerHomeScreen() {
           <Text style={styles.postButtonText}>+ Post Callout</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Upgrade banner for free tier */}
+      {isFree && (
+        <View style={styles.upgradeBanner}>
+          <View style={styles.upgradeText}>
+            <Text style={styles.upgradeTitle}>Free plan — notifications off</Text>
+            <Text style={styles.upgradeSubtitle}>Upgrade to send push + SMS to workers</Text>
+          </View>
+          <View style={styles.upgradeButtons}>
+            <TouchableOpacity style={styles.upgradeBtn} onPress={() => handleUpgrade('starter')}>
+              <Text style={styles.upgradeBtnText}>Starter $49</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.upgradeBtn, styles.upgradeBtnPro]} onPress={() => handleUpgrade('pro')}>
+              <Text style={styles.upgradeBtnText}>Pro $99</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       <ScrollView
         style={styles.scroll}
@@ -157,9 +207,7 @@ export default function ManagerHomeScreen() {
               </Text>
 
               {callout.notes ? (
-                <Text style={styles.notes} numberOfLines={1}>
-                  {callout.notes}
-                </Text>
+                <Text style={styles.notes} numberOfLines={1}>{callout.notes}</Text>
               ) : null}
 
               <View style={styles.cardActions}>
@@ -176,16 +224,8 @@ export default function ManagerHomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f0f1a',
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#0f0f1a',
-  },
+  container: { flex: 1, backgroundColor: '#0f0f1a' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f0f1a' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -195,96 +235,49 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     backgroundColor: '#1a1a2e',
   },
-  locationName: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#fff',
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
-  },
+  locationName: { fontSize: 20, fontWeight: '800', color: '#fff' },
+  headerSubtitle: { fontSize: 12, color: '#666', marginTop: 2 },
   postButton: {
     backgroundColor: '#4f46e5',
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
-  postButtonText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-    gap: 12,
-  },
-  empty: {
-    alignItems: 'center',
-    paddingTop: 80,
-    gap: 8,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: '#666',
-  },
-  card: {
+  postButtonText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  upgradeBanner: {
     backgroundColor: '#1a1a2e',
-    borderRadius: 14,
-    padding: 16,
-    gap: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2a2a40',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 10,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  upgradeText: { gap: 2 },
+  upgradeTitle: { fontSize: 13, fontWeight: '700', color: '#f59e0b' },
+  upgradeSubtitle: { fontSize: 12, color: '#666' },
+  upgradeButtons: { flexDirection: 'row', gap: 8 },
+  upgradeBtn: {
+    flex: 1,
+    backgroundColor: '#312e81',
+    borderRadius: 8,
+    paddingVertical: 8,
     alignItems: 'center',
-    marginBottom: 4,
   },
-  roleName: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  shiftDate: {
-    fontSize: 14,
-    color: '#aaa',
-  },
-  shiftTime: {
-    fontSize: 14,
-    color: '#ccc',
-    fontWeight: '600',
-  },
-  notes: {
-    fontSize: 13,
-    color: '#666',
-    fontStyle: 'italic',
-  },
-  cardActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: 8,
-  },
-  cancelLink: {
-    color: '#ef4444',
-    fontSize: 13,
-    fontWeight: '600',
-  },
+  upgradeBtnPro: { backgroundColor: '#4f46e5' },
+  upgradeBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  scroll: { flex: 1 },
+  scrollContent: { padding: 16, gap: 12 },
+  empty: { alignItems: 'center', paddingTop: 80, gap: 8 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
+  emptySubtitle: { fontSize: 14, color: '#666' },
+  card: { backgroundColor: '#1a1a2e', borderRadius: 14, padding: 16, gap: 6 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  roleName: { fontSize: 17, fontWeight: '700', color: '#fff' },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  statusText: { fontSize: 12, fontWeight: '700' },
+  shiftDate: { fontSize: 14, color: '#aaa' },
+  shiftTime: { fontSize: 14, color: '#ccc', fontWeight: '600' },
+  notes: { fontSize: 13, color: '#666', fontStyle: 'italic' },
+  cardActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8 },
+  cancelLink: { color: '#ef4444', fontSize: 13, fontWeight: '600' },
 });

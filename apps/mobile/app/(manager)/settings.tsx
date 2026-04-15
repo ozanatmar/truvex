@@ -228,7 +228,7 @@ export default function ManagerSettingsScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>Account</Text>
         <View style={styles.card}>
-          <Row label="Phone" value={loc?.manager_phone ?? session?.user?.phone ?? '—'} />
+          <Row label="Phone" value={session?.user?.phone ?? '—'} />
         </View>
       </View>
 

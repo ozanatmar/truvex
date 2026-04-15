@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { supabase } from '../../../lib/supabase';
-import { supabaseAdmin } from '../../../lib/supabase';
+import { supabase, supabaseAdmin } from '../../../lib/supabase';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).end();
@@ -30,7 +29,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // Verify callout exists and is still open
   const { data: callout } = await supabaseAdmin
-    .from('truvex.callouts')
+    .schema('truvex')
+    .from('callouts')
     .select('id, status, location_id, first_accepted_at')
     .eq('id', callout_id)
     .single();
@@ -42,7 +42,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // Verify user is an active member of the location
   const { data: membership } = await supabaseAdmin
-    .from('truvex.location_members')
+    .schema('truvex')
+    .from('location_members')
     .select('id')
     .eq('location_id', callout.location_id)
     .eq('user_id', userId)
@@ -55,7 +56,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // Insert/update response
   const { error: responseError } = await supabaseAdmin
-    .from('truvex.callout_responses')
+    .schema('truvex')
+    .from('callout_responses')
     .upsert({
       callout_id,
       worker_id: userId,
@@ -71,7 +73,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (response === 'accepted' && !callout.first_accepted_at) {
     const now = new Date();
     await supabaseAdmin
-      .from('truvex.callouts')
+      .schema('truvex')
+      .from('callouts')
       .update({
         first_accepted_at: now.toISOString(),
         auto_assign_at: new Date(now.getTime() + 30 * 60 * 1000).toISOString(),

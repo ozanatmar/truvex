@@ -125,6 +125,7 @@ create table truvex.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   phone text unique not null,
   name text,
+  expo_push_token text,
   created_at timestamptz default now()
 );
 ```
@@ -138,6 +139,10 @@ create table truvex.locations (
   industry_type text not null default 'restaurant', -- multi-vertical ready
   manager_id uuid not null references truvex.profiles(id),
   subscription_tier text not null default 'free', -- 'free' | 'starter' | 'pro'
+  subscription_status text not null default 'trialing',
+  -- 'trialing' | 'active' | 'past_due' | 'cancelled' | 'expired'
+  trial_ends_at timestamptz,
+  subscription_period_end timestamptz,
   stripe_customer_id text,
   stripe_subscription_id text,
   created_at timestamptz default now()
@@ -148,19 +153,31 @@ create table truvex.locations (
 - `starter` — up to 30 workers, push + SMS ($49/month)
 - `pro` — unlimited workers, push + SMS ($99/month)
 
+**Subscription statuses:**
+- `trialing` — within the 14-day free trial
+- `active` — paid and current
+- `past_due` — payment failed, grace period
+- `cancelled` — cancelled by manager, access continues until `subscription_period_end`
+- `expired` — trial ended or subscription fully lapsed, no notifications
+
 ### `truvex.location_members`
 Links users to locations. A worker can be in multiple locations.
+`user_id` is nullable — a NULL row represents a pending invite (worker not yet signed up).
 ```sql
 create table truvex.location_members (
   id uuid primary key default gen_random_uuid(),
   location_id uuid not null references truvex.locations(id) on delete cascade,
-  user_id uuid not null references truvex.profiles(id) on delete cascade,
+  user_id uuid references truvex.profiles(id) on delete cascade, -- NULL for pending invites
   member_type text not null, -- 'manager' | 'worker'
   status text not null default 'pending', -- 'pending' | 'active'
   is_muted boolean not null default false,
   invited_by uuid references truvex.profiles(id),
-  created_at timestamptz default now(),
-  unique(location_id, user_id)
+  invited_phone text,        -- phone number of the invited worker (pending invite only)
+  invited_name text,         -- display name set by manager (takes precedence over profile name)
+  primary_role_id uuid references truvex.roles(id) on delete set null,
+  additional_role_ids uuid[] not null default '{}',
+  created_at timestamptz default now()
+  -- unique(location_id, user_id) where user_id is not null (enforced via partial index)
 );
 ```
 
@@ -240,6 +257,20 @@ create table truvex.notification_log (
   -- | 'shift_filled' | 'shift_cancelled' | 'no_response_escalation'
   sent_at timestamptz default now(),
   opened_at timestamptz -- set when push notification is opened
+);
+```
+
+### `truvex.shift_presets`
+Saved shift time templates per location. Manager can save and reuse common shift times in the post-callout form.
+```sql
+create table truvex.shift_presets (
+  id uuid primary key default gen_random_uuid(),
+  location_id uuid not null references truvex.locations(id) on delete cascade,
+  label text not null,
+  start_time time not null,
+  end_time time not null,
+  created_at timestamptz default now(),
+  unique(location_id, label)
 );
 ```
 
@@ -417,6 +448,9 @@ SUPABASE_SERVICE_ROLE_KEY=        # Server-side only, never expose to client
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
+STRIPE_STARTER_PRICE_ID=          # Stripe price ID for $49/mo Starter plan
+STRIPE_PRO_PRICE_ID=               # Stripe price ID for $99/mo Pro plan
+NEXT_PUBLIC_APP_URL=               # e.g. https://truvex.app
 TWILIO_ACCOUNT_SID=
 TWILIO_AUTH_TOKEN=
 TWILIO_PHONE_NUMBER=

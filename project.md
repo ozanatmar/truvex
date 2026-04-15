@@ -135,13 +135,14 @@ All tables live in the `truvex` schema. See `supabase/migrations/001_truvex_sche
 | `/onboarding/restaurant` | Restaurant name (first launch) |
 | `/onboarding/roles` | Role setup (first launch) |
 | `/onboarding/first-worker` | Add first worker (first launch) |
-| `/(manager)/` | Home — active callouts |
-| `/(manager)/post-callout` | Post callout form |
+| `/(manager)/` | Home — active callouts + subscription banner |
+| `/(manager)/post-callout` | Post callout form with shift presets |
 | `/(manager)/callout/[id]` | Callout detail + acceptor selection |
 | `/(manager)/team` | Worker list |
-| `/(manager)/team/add` | Add worker |
-| `/(manager)/team/[id]` | Edit worker |
+| `/(manager)/team/add` | Add worker (direct link or pending invite) |
+| `/(manager)/team/[id]` | Edit worker name + roles |
 | `/(manager)/history` | Past callouts |
+| `/(manager)/settings` | Subscription management + account + tutorial |
 
 ### Worker
 | Route | Screen |
@@ -162,6 +163,9 @@ Shown during app bootstrap (session check → profile → location lookup). Impl
 ### Web
 | Route | Page |
 |---|---|
-| `/upgrade` | Stripe checkout entry |
-| `/success` | Post-payment deep link redirect |
-| `/callout/[id]` | Shareable callout for free tier |
+| `/upgrade` | Stripe checkout entry (OTP auth → Stripe Checkout) |
+| `/success` | Post-payment deep link redirect to `truvex://upgrade-success` |
+| `/callout/[id]` | Shareable callout for free tier (OTP auth → accept/decline) |
+| `/subscription` | Stripe Customer Portal redirect (OTP auth → portal) |
+| `/subscription/cancel` | Cancel subscription (OTP auth → cancel at period end) |
+| `/subscription/return` | Post-portal landing → deep link to `truvex://subscription-updated` |

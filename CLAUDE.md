@@ -4,6 +4,17 @@ This file is the single source of truth for building Truvex. Read it fully befor
 
 ---
 
+## Git Branch Rules
+
+**Always work on `dev`. Never push directly to `main`.**
+
+- All commits go to the `dev` branch
+- `main` is only updated when the user explicitly says to merge (e.g. "merge to main" or "release")
+- When merging to main: fast-forward merge `dev` → `main`, then push both branches
+- Never use `--force` on either branch
+
+---
+
 ## project.md Maintenance Rules
 
 **Update `project.md` BEFORE completing any task that involves:**

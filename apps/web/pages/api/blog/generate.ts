@@ -137,9 +137,10 @@ export default async function handler(
     const clean = raw.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
 
     parsed = JSON.parse(clean);
-  } catch (err) {
-    console.error('OpenAI error or JSON parse error:', err);
-    return res.status(500).json({ error: 'Failed to generate blog post' });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('OpenAI error or JSON parse error:', message);
+    return res.status(500).json({ error: 'Failed to generate blog post', detail: message });
   }
 
   if (!parsed.title || !parsed.body_html) {

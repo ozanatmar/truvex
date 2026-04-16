@@ -47,7 +47,7 @@ STRUCTURE:
 - Closing: end with a thought, a challenge, or a forward-looking statement — not a call-to-action
 
 LENGTH:
-700 to 1000 words
+500 to 700 words
 
 OUTPUT FORMAT:
 Return a single JSON object with exactly three keys:
@@ -117,7 +117,7 @@ export default async function handler(
   try {
     const completion = await openai.chat.completions.create({
       model: 'gpt-5.4',
-      max_completion_tokens: 2000,
+      max_completion_tokens: 1200,
       temperature: 0.7,
       messages: [
         {

@@ -22,6 +22,7 @@ async function getUniqueSlug(baseSlug: string): Promise<string> {
   let attempt = 0;
   while (true) {
     const { data } = await supabase
+      .schema('truvex')
       .from('blog_posts')
       .select('slug')
       .eq('slug', slug)
@@ -57,6 +58,7 @@ export default async function handler(
   const slug = await getUniqueSlug(baseSlug);
 
   const { data, error } = await supabase
+    .schema('truvex')
     .from('blog_posts')
     .insert({
       title,

@@ -107,6 +107,7 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
   const { slug } = ctx.params as { slug: string };
 
   const { data, error } = await supabase
+    .schema('truvex')
     .from('blog_posts')
     .select('id, title, slug, description, body_html, published_at')
     .eq('slug', slug)

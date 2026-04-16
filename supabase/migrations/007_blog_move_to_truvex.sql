@@ -1,3 +1,5 @@
+-- Move blog_posts from public schema to truvex schema
+
 create table if not exists truvex.blog_posts (
   id uuid primary key default gen_random_uuid(),
   title text not null,
@@ -14,9 +16,14 @@ create index if not exists truvex_blog_posts_published_at_idx on truvex.blog_pos
 
 alter table truvex.blog_posts enable row level security;
 
--- Public read access — anyone can read published posts
 create policy "Public can read blog posts"
   on truvex.blog_posts for select
   using (true);
 
--- No public insert/update/delete — only the service role can write
+-- Migrate any existing rows
+insert into truvex.blog_posts
+  select * from public.blog_posts
+  on conflict (slug) do nothing;
+
+-- Drop old table
+drop table if exists public.blog_posts;

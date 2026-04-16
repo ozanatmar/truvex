@@ -82,6 +82,7 @@ export default function BlogIndex({ posts }: { posts: PostSummary[] }) {
 
 export const getServerSideProps: GetServerSideProps = async () => {
   const { data, error } = await supabase
+    .schema('truvex')
     .from('blog_posts')
     .select('title, slug, description, published_at')
     .order('published_at', { ascending: false })

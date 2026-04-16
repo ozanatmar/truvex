@@ -7,9 +7,12 @@ import {
   ActivityIndicator,
   TouchableOpacity,
 } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../lib/store';
+
+const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL ?? 'https://truvex-web.vercel.app';
 
 interface WorkerStat {
   name: string;
@@ -34,7 +37,7 @@ interface Stats {
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function AnalyticsScreen() {
-  const { activeLocation } = useStore();
+  const { activeLocation, profile } = useStore();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -137,6 +140,20 @@ export default function AnalyticsScreen() {
           <View style={styles.gateBadge}>
             <Text style={styles.gateBadgeText}>Business · $99/mo</Text>
           </View>
+          <TouchableOpacity
+            style={styles.gateButton}
+            onPress={async () => {
+              const phone = profile?.phone ?? '';
+              const url = `${WEB_URL}/upgrade?location_id=${activeLocation?.id}&tier=business&phone=${encodeURIComponent(phone)}`;
+              await WebBrowser.openBrowserAsync(url, {
+                toolbarColor: '#0f0f1a',
+                controlsColor: '#F5853F',
+                presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
+              });
+            }}
+          >
+            <Text style={styles.gateButtonText}>Upgrade to Business →</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -275,6 +292,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 6,
   },
   gateBadgeText: { color: '#10b981', fontWeight: '700', fontSize: 13 },
+  gateButton: {
+    backgroundColor: '#F5853F',
+    borderRadius: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  gateButtonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 
   // Summary
   summaryRow: { flexDirection: 'row', gap: 10 },

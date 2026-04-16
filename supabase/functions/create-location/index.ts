@@ -45,6 +45,25 @@ serve(async (req) => {
       });
     }
 
+    // Gate additional locations behind a paid tier on the first location
+    const { data: userLocations } = await supabase
+      .schema('truvex')
+      .from('locations')
+      .select('subscription_tier')
+      .eq('manager_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (userLocations && userLocations.length > 0) {
+      const existing = userLocations[0];
+      if (!existing || existing.subscription_tier === 'free') {
+        return new Response(
+          JSON.stringify({ error: 'Upgrade your current location to Pro or Business before adding more locations.' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+    }
+
     // Create the location
     const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
     const { data: location, error: locationError } = await supabase

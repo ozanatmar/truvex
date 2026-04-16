@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Linking,
 } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../lib/store';
@@ -29,7 +30,7 @@ function formatDate(dateStr: string | null): string {
 }
 
 export default function ManagerSettingsScreen() {
-  const { session, activeLocation, setActiveLocation, reset } = useStore();
+  const { session, profile, activeLocation, setActiveLocation, reset } = useStore();
   const [location, setLocation] = useState<Location | null>(activeLocation);
   const [showTutorial, setShowTutorial] = useState(false);
 
@@ -58,9 +59,14 @@ export default function ManagerSettingsScreen() {
     return () => sub.remove();
   }, [refresh]);
 
-  function handleUpgrade(tier: 'pro' | 'business') {
-    const url = `${WEB_URL}/upgrade?location_id=${location?.id}&tier=${tier}`;
-    Linking.openURL(url);
+  async function handleUpgrade(tier: 'pro' | 'business') {
+    const phone = profile?.phone ?? '';
+    const url = `${WEB_URL}/upgrade?location_id=${location?.id}&tier=${tier}&phone=${encodeURIComponent(phone)}`;
+    await WebBrowser.openBrowserAsync(url, {
+      toolbarColor: '#0f0f1a',
+      controlsColor: '#F5853F',
+      presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
+    });
   }
 
   function handleManageSubscription() {

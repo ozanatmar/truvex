@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { GetServerSideProps } from 'next';
 import { supabaseAdmin } from '../lib/supabase';
 import Head from 'next/head';
@@ -11,6 +11,7 @@ interface Props {
   tier: Tier;
   initialBilling: Billing;
   locationName: string;
+  prefillPhone: string;
 }
 
 const PLAN_INFO = {
@@ -30,10 +31,26 @@ const PLAN_INFO = {
   },
 };
 
-export default function UpgradePage({ locationId, tier, initialBilling, locationName }: Props) {
-  const [phone, setPhone] = useState('');
+function toE164(phone: string): string {
+  // If already E.164 (e.g. +12125551234 from store), use as-is
+  if (phone.startsWith('+')) return phone;
+  return `+1${phone.replace(/\D/g, '')}`;
+}
+
+function formatDisplayPhone(phone: string): string {
+  const e164 = toE164(phone);
+  if (e164.startsWith('+1') && e164.length === 12) {
+    const digits = e164.slice(2);
+    return `+1 (${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  return e164;
+}
+
+export default function UpgradePage({ locationId, tier, initialBilling, locationName, prefillPhone }: Props) {
+  const [phone, setPhone] = useState(prefillPhone);
   const [otp, setOtp] = useState('');
-  const [step, setStep] = useState<'phone' | 'otp'>('phone');
+  // If phone was prefilled from app, skip straight to OTP step
+  const [step, setStep] = useState<'phone' | 'otp'>(prefillPhone ? 'otp' : 'phone');
   const [billing, setBilling] = useState<Billing>(initialBilling);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -44,8 +61,7 @@ export default function UpgradePage({ locationId, tier, initialBilling, location
   async function handleSendOtp() {
     setLoading(true);
     setError('');
-    const digits = phone.replace(/\D/g, '');
-    const e164 = `+1${digits}`;
+    const e164 = toE164(phone);
 
     const res = await fetch('/api/auth/send-otp', {
       method: 'POST',
@@ -59,14 +75,14 @@ export default function UpgradePage({ locationId, tier, initialBilling, location
     } else {
       const data = await res.json();
       setError(data.error ?? 'Failed to send code');
+      setStep('phone'); // fall back so they can re-enter
     }
   }
 
   async function handleVerifyOtp() {
     setLoading(true);
     setError('');
-    const digits = phone.replace(/\D/g, '');
-    const e164 = `+1${digits}`;
+    const e164 = toE164(phone);
 
     const res = await fetch('/api/auth/verify-otp', {
       method: 'POST',
@@ -83,6 +99,13 @@ export default function UpgradePage({ locationId, tier, initialBilling, location
     }
     setLoading(false);
   }
+
+  // When phone was prefilled from the app, fire OTP automatically on mount
+  useEffect(() => {
+    if (prefillPhone) {
+      handleSendOtp();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>
@@ -154,7 +177,13 @@ export default function UpgradePage({ locationId, tier, initialBilling, location
 
           {step === 'otp' && (
             <>
-              <p style={styles.label}>Enter the 6-digit code we texted you</p>
+              <p style={styles.label}>
+                Enter the 6-digit code sent to{' '}
+                <strong style={{ color: '#fff' }}>{formatDisplayPhone(phone)}</strong>
+              </p>
+              {loading && !otp && (
+                <p style={{ ...styles.label, color: '#7A8899' }}>Sending code…</p>
+              )}
               <input
                 style={{ ...styles.input, textAlign: 'center', fontSize: 24, letterSpacing: 8 }}
                 type="text"
@@ -172,10 +201,13 @@ export default function UpgradePage({ locationId, tier, initialBilling, location
                 onClick={handleVerifyOtp}
                 disabled={loading || otp.length !== 6}
               >
-                {loading ? 'Verifying…' : 'Continue to payment'}
+                {loading && otp.length === 6 ? 'Verifying…' : 'Continue to payment'}
               </button>
-              <button style={styles.backBtn} onClick={() => setStep('phone')}>
-                ← Change number
+              <button
+                style={styles.backBtn}
+                onClick={() => { setStep('phone'); setOtp(''); setError(''); }}
+              >
+                ← Use a different number
               </button>
             </>
           )}
@@ -301,7 +333,7 @@ const styles: Record<string, React.CSSProperties> = {
 };
 
 export const getServerSideProps: GetServerSideProps = async (ctx) => {
-  const { location_id, tier, billing } = ctx.query;
+  const { location_id, tier, billing, phone } = ctx.query;
 
   if (!location_id || !tier || (tier !== 'pro' && tier !== 'business')) {
     return { notFound: true };
@@ -322,6 +354,7 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
       tier: tier as Tier,
       initialBilling: billing === 'annual' ? 'annual' : 'monthly',
       locationName: location.name,
+      prefillPhone: typeof phone === 'string' ? phone : '',
     },
   };
 };

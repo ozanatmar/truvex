@@ -9,6 +9,7 @@ export default function App({ Component, pageProps }: AppProps) {
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
         <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png" />
         <meta name="theme-color" content="#1a1a2e" />
+        <style>{`html, body { margin: 0; padding: 0; background: #0f0f1a; }`}</style>
       </Head>
       <Component {...pageProps} />
     </>

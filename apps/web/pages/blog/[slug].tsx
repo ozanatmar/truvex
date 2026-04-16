@@ -8,6 +8,46 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+const APP_STRIP_HTML = `
+<div style="margin: 40px 0; padding: 24px 28px; background: #f0f7f7; border-radius: 14px; border-left: 4px solid #0E7C7B;">
+  <p style="font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #0E7C7B; margin: 0 0 8px;">Truvex App</p>
+  <p style="font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 600; color: #1A1A2E; margin: 0 0 16px; line-height: 1.4;">One tap to fill a last-minute callout. Free for teams up to 10.</p>
+  <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+    <a href="https://truvex.app/#download" style="display: inline-flex; align-items: center; gap: 8px; background: #1A1A2E; color: #fff; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; padding: 10px 18px; border-radius: 8px; text-decoration: none;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+      App Store
+    </a>
+    <a href="https://truvex.app/#download" style="display: inline-flex; align-items: center; gap: 8px; background: #1A1A2E; color: #fff; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; padding: 10px 18px; border-radius: 8px; text-decoration: none;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3.18 23.76c.3.17.64.22.98.15l12.08-6.98-2.61-2.61-10.45 9.44zm-1.81-20.1c-.05.17-.07.35-.07.54v15.6c0 .19.02.38.08.55l.06.06 8.74-8.74v-.2L1.31 3.6l.06.06zM20.12 10.1l-2.5-1.45-2.93 2.93 2.93 2.93 2.52-1.45c.72-.41.72-1.55-.02-1.96zM4.17.42L16.25 7.4l-2.62 2.62L3.18.59A1.17 1.17 0 014.17.42z"/></svg>
+      Google Play
+    </a>
+  </div>
+</div>
+`;
+
+function injectAppStrip(html: string, stripHtml: string): string {
+  // Try to insert after the last <h2>...</h2> block
+  const h2Regex = /(<\/h2>)/gi;
+  const h2Matches = [...html.matchAll(h2Regex)];
+  if (h2Matches.length > 0) {
+    const lastMatch = h2Matches[h2Matches.length - 1];
+    const insertAt = lastMatch.index! + lastMatch[0].length;
+    return html.slice(0, insertAt) + stripHtml + html.slice(insertAt);
+  }
+
+  // Fallback: insert after second-to-last </p>
+  const pRegex = /(<\/p>)/gi;
+  const pMatches = [...html.matchAll(pRegex)];
+  if (pMatches.length >= 2) {
+    const target = pMatches[pMatches.length - 2];
+    const insertAt = target.index! + target[0].length;
+    return html.slice(0, insertAt) + stripHtml + html.slice(insertAt);
+  }
+
+  // Last resort: append
+  return html + stripHtml;
+}
+
 interface BlogPost {
   id: string;
   title: string;
@@ -27,6 +67,8 @@ export default function BlogPostPage({ post }: Props) {
     month: 'long',
     day: 'numeric',
   });
+
+  const enrichedHtml = injectAppStrip(post.body_html, APP_STRIP_HTML);
 
   return (
     <>
@@ -82,14 +124,13 @@ export default function BlogPostPage({ post }: Props) {
             <div
               className="blog-body"
               style={styles.body}
-              dangerouslySetInnerHTML={{ __html: post.body_html }}
+              dangerouslySetInnerHTML={{ __html: enrichedHtml }}
             />
 
             <footer style={styles.footer}>
               <div style={styles.cta}>
                 <p style={styles.ctaText}>
-                  Truvex fills last-minute shift callouts in seconds.
-                  One tap, every qualified worker notified.
+                  Truvex was built for this exact problem. Free for teams up to 10 workers, no credit card required.
                 </p>
                 <Link href="/#pricing" style={styles.ctaButton}>
                   Start Free — No Credit Card

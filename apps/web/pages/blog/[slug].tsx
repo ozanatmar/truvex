@@ -28,7 +28,7 @@ const APP_STRIP_HTML = `
 function injectAppStrip(html: string, stripHtml: string): string {
   // Try to insert after the last <h2>...</h2> block
   const h2Regex = /(<\/h2>)/gi;
-  const h2Matches = [...html.matchAll(h2Regex)];
+  const h2Matches = Array.from(html.matchAll(h2Regex));
   if (h2Matches.length > 0) {
     const lastMatch = h2Matches[h2Matches.length - 1];
     const insertAt = lastMatch.index! + lastMatch[0].length;
@@ -37,7 +37,7 @@ function injectAppStrip(html: string, stripHtml: string): string {
 
   // Fallback: insert after second-to-last </p>
   const pRegex = /(<\/p>)/gi;
-  const pMatches = [...html.matchAll(pRegex)];
+  const pMatches = Array.from(html.matchAll(pRegex));
   if (pMatches.length >= 2) {
     const target = pMatches[pMatches.length - 2];
     const insertAt = target.index! + target[0].length;

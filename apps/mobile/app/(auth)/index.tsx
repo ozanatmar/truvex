@@ -66,7 +66,6 @@ export default function PhoneScreen() {
               placeholderTextColor="#999"
               keyboardType="phone-pad"
               maxLength={14}
-              autoFocus
             />
           </View>
 

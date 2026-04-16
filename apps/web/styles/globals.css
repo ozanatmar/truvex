@@ -1,3 +1,19 @@
+/* Shared nav responsive helpers */
+.site-hamburger {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  flex-shrink: 0;
+}
+@media (min-width: 768px) { .site-hamburger { display: none; } }
+
+.site-nav-cta { display: none; }
+@media (min-width: 768px) { .site-nav-cta { display: inline-flex !important; } }
+
 /* Blog layout — nav and footer responsive helpers */
 .blog-nav-links {
   display: none;

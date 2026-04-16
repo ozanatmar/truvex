@@ -26,10 +26,6 @@ export default function BlogIndex({ posts }: { posts: PostSummary[] }) {
           content="Practical advice for restaurant and hospitality managers on shift coverage, scheduling, and team management."
         />
         <link rel="canonical" href="https://truvex.app/blog" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
-        <style>{`body { background: #FAFAF8; }`}</style>
       </Head>
 
       <BlogLayout>

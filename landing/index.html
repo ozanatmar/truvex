@@ -139,6 +139,16 @@
     }
     .btn-ghost:hover { background: var(--color-primary); color: var(--color-white); }
 
+    .btn-ghost-dark {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      background: transparent; color: var(--color-heading);
+      font-family: var(--font-heading); font-weight: 700; font-size: 17px;
+      padding: 14px 30px; border: 2px solid var(--color-heading); border-radius: var(--radius-md);
+      cursor: pointer; transition: background 0.2s ease, color 0.2s ease;
+      text-decoration: none; white-space: nowrap; line-height: 1;
+    }
+    .btn-ghost-dark:hover { background: var(--color-heading); color: var(--color-white); }
+
     .btn-white {
       display: inline-flex; align-items: center; justify-content: center;
       background: var(--color-white); color: var(--color-primary);
@@ -329,23 +339,17 @@
     .step { display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; }
     @media (min-width: 768px) {
       .step:not(:last-child)::after {
-        content: ''; position: absolute; top: 28px; right: -16px;
+        content: ''; position: absolute; top: 28px; left: calc(100% + 0px);
         width: 32px; height: 0; border-top: 2px dashed rgba(255,255,255,0.35);
       }
     }
     .step-num {
-      width: 40px; height: 40px; border-radius: 50%;
+      width: 56px; height: 56px; border-radius: 50%;
       background: var(--color-secondary); color: var(--color-white);
-      font-family: var(--font-heading); font-size: 18px; font-weight: 800;
+      font-family: var(--font-heading); font-size: 22px; font-weight: 800;
       display: flex; align-items: center; justify-content: center;
       margin-bottom: 20px; flex-shrink: 0;
     }
-    .step-icon {
-      width: 72px; height: 72px; border-radius: 50%;
-      background: rgba(255,255,255,0.15);
-      display: flex; align-items: center; justify-content: center; margin-bottom: 20px;
-    }
-    .step-icon svg { width: 36px; height: 36px; color: var(--color-white); }
     .step h3 { color: var(--color-white); font-size: 20px; font-weight: 700; margin-bottom: 10px; }
     .step p { color: rgba(255,255,255,0.8); font-size: var(--text-sm); line-height: 1.7; }
     .how-cta { text-align: center; margin-top: 56px; }
@@ -444,11 +448,11 @@
     .pricing-card {
       background: var(--color-white); border-radius: var(--radius-lg);
       padding: 32px 28px; box-shadow: 0 2px 20px rgba(0,0,0,0.06);
-      display: flex; flex-direction: column; border: 2px solid transparent; position: relative;
+      display: flex; flex-direction: column; border: 2px solid transparent; position: relative; overflow: visible;
     }
     .pricing-card.popular { border-color: var(--color-primary); }
     .popular-badge {
-      position: absolute; top: -1px; right: 20px;
+      position: absolute; top: -14px; right: 20px;
       background: var(--color-primary); color: var(--color-white);
       font-family: var(--font-heading); font-size: 11px; font-weight: 700;
       padding: 4px 12px; border-radius: 0 0 var(--radius-sm) var(--radius-sm);
@@ -485,7 +489,7 @@
       background: linear-gradient(135deg, #0E7C7B 0%, #0A5F5E 100%);
       padding: var(--section-pad) 0; text-align: center; position: relative; overflow: hidden;
     }
-    .cta-break-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.1; z-index: 0; }
+    .cta-break::after { content: ''; position: absolute; inset: 0; background-image: radial-gradient(circle, rgba(255,255,255,0.15) 1px, transparent 1px); background-size: 20px 20px; pointer-events: none; z-index: 0; }
     .cta-break-inner { position: relative; z-index: 1; max-width: 680px; margin: 0 auto; }
     .cta-break h2 { color: var(--color-white); font-size: var(--text-h2); font-weight: 800; margin-bottom: 16px; }
     .cta-break-sub { color: rgba(255,255,255,0.85); font-size: var(--text-body-lg); margin-bottom: 36px; line-height: 1.65; }
@@ -573,7 +577,7 @@
     .mobile-cta-bar {
       position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
       background: var(--color-white); box-shadow: 0 -2px 16px rgba(0,0,0,0.12);
-      padding: 12px 16px env(safe-area-inset-bottom, 12px);
+      padding: 12px 16px; padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
       transform: translateY(100%); transition: transform 0.3s ease;
     }
     .mobile-cta-bar.visible { transform: translateY(0); }
@@ -724,7 +728,7 @@
     <div class="problem-cards">
       <div class="feature-card problem-card anim anim-d1">
         <div class="card-icon-circle icon-teal">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 8.63 19.79 19.79 0 01.02 2.02 2 2 0 012 0h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 7.91"/><line x1="17" y1="7" x2="23" y2="7"/><line x1="20" y1="4" x2="20" y2="10"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 8.63 19.79 19.79 0 01.02 2.02 2 2 0 012 0h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 7.91"/><line x1="17" y1="7" x2="23" y2="13"/><line x1="23" y1="7" x2="17" y2="13"/></svg>
         </div>
         <h3>The phone tree from hell</h3>
         <p>Someone calls out at 6 AM. You start dialing. First person: no answer. Second: can't make it. Third: no response. Twelve calls later, you're still short.</p>
@@ -757,35 +761,26 @@
     <div class="steps">
       <div class="step anim anim-d1">
         <div class="step-num">1</div>
-        <div class="step-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/><path d="M9 9l3-3 3 3"/></svg>
-        </div>
         <h3>Someone calls out</h3>
         <p>A team member can&#8217;t make their shift. Open Truvex, tap &#8220;Find Coverage.&#8221; Takes 5 seconds.</p>
       </div>
       <div class="step anim anim-d2">
         <div class="step-num">2</div>
-        <div class="step-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-        </div>
         <h3>Everyone gets notified</h3>
         <p>Every qualified off-duty worker instantly gets a push notification and SMS. No group texts. No phone calls. No chasing.</p>
       </div>
       <div class="step anim anim-d3">
         <div class="step-num">3</div>
-        <div class="step-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-        </div>
         <h3>You pick your coverage</h3>
         <p>See who accepted. Pick your person. Confirm. If you don&#8217;t act within 30 minutes, the first acceptor is assigned automatically.</p>
       </div>
     </div>
+    <div class="how-img anim">
+      <img src="/how-it-works-flow.jpg" alt="Three-step process showing how Truvex automates shift callout coverage" width="1000" height="360" loading="lazy">
+    </div>
     <div class="how-cta anim">
       <a href="#pricing" class="btn-white">Start My Free Trial</a>
       <p class="microcopy">Free for 14 days &middot; No credit card required</p>
-    </div>
-    <div class="how-img anim">
-      <img src="/how-it-works-flow.jpg" alt="Three-step process showing how Truvex automates shift callout coverage" width="1000" height="360" loading="lazy">
     </div>
   </div>
 </section>
@@ -840,15 +835,15 @@
     </div>
     <div class="stats-bar anim">
       <div class="stat-item">
-        <span class="stat-num" data-target="500" data-suffix="+">500+</span>
+        <span class="stat-num" data-target="500" data-suffix="+">0</span>
         <p class="stat-lbl">Shifts<br>covered</p>
       </div>
       <div class="stat-item">
-        <span class="stat-num" data-target="12" data-suffix=" min">12 min</span>
+        <span class="stat-num" data-target="12" data-suffix=" min">0</span>
         <p class="stat-lbl">Avg. time to<br>fill a shift</p>
       </div>
       <div class="stat-item">
-        <span class="stat-num" data-target="3" data-suffix=" hrs">3 hrs</span>
+        <span class="stat-num" data-target="3" data-suffix=" hrs">0</span>
         <p class="stat-lbl">Saved per<br>manager/week</p>
       </div>
     </div>
@@ -922,7 +917,7 @@
         <div class="worker-ctas">
           <button class="btn-primary" id="tellManagerBtn" aria-label="Tell my manager about Truvex">Tell My Manager About Truvex</button>
           <p class="worker-hint">Tap to send a pre-written message to your manager</p>
-          <a href="#" class="btn-ghost" style="margin-top:4px;">Download the Free App</a>
+          <a href="#" class="btn-ghost-dark" style="margin-top:4px;">Download the Free App</a>
         </div>
       </div>
       <div class="worker-img anim anim-d2">
@@ -1014,7 +1009,6 @@
 
 <!-- ===== CTA BREAK ===== -->
 <section class="cta-break">
-  <img src="/cta-background.jpg" alt="" aria-hidden="true" width="1440" height="400" loading="lazy" class="cta-break-bg">
   <div class="container">
     <div class="cta-break-inner anim">
       <h2>Ready to stop the 6 AM scramble?</h2>
@@ -1192,7 +1186,7 @@
       </div>
     </div>
     <div class="footer-bottom">
-      <p class="footer-copy">&copy; 2025 Truvex. All rights reserved.</p>
+      <p class="footer-copy">&copy; 2026 Truvex. All rights reserved.</p>
       <div class="footer-social">
         <a href="https://twitter.com/truvexapp" aria-label="Truvex on Twitter / X" rel="noopener noreferrer" target="_blank">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
@@ -1314,6 +1308,7 @@
 
   toggleMonthly.addEventListener('click', function() { setPricing(false); });
   toggleAnnual.addEventListener('click', function() { setPricing(true); });
+  setPricing(false);
 
   /* ===== SCROLL ANIMATIONS ===== */
   var animEls = document.querySelectorAll('.anim');

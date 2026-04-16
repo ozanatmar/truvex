@@ -12,8 +12,9 @@ import {
 import { useRouter, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../lib/store';
-import { CalloutWithRole } from '../../types/database';
+import { CalloutWithRole, Location } from '../../types/database';
 import { formatShiftTime } from '../../lib/utils';
+import LocationPickerSheet from '../../components/LocationPickerSheet';
 
 const STATUS_LABELS: Record<string, string> = {
   open: 'Open',
@@ -33,10 +34,11 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function ManagerHomeScreen() {
   const router = useRouter();
-  const { activeLocation, setActiveLocation } = useStore();
+  const { activeLocation, allLocations, setActiveLocation } = useStore();
   const [callouts, setCallouts] = useState<CalloutWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
 
   const fetchCallouts = useCallback(async () => {
     if (!activeLocation) return;
@@ -119,15 +121,20 @@ export default function ManagerHomeScreen() {
     bannerText = 'Payment failed · Update in Settings';
     bannerColor = '#ef4444';
   } else if (tier === 'free' || subStatus === 'expired') {
-    bannerText = 'Starter plan — notifications off · Tap Settings to upgrade';
+    bannerText = 'Free plan — notifications off · Tap Settings to upgrade';
   }
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View>
-          <Text style={styles.locationName}>{activeLocation?.name}</Text>
-        </View>
+        <TouchableOpacity
+          onPress={() => allLocations.length > 1 && setShowPicker(true)}
+          activeOpacity={allLocations.length > 1 ? 0.7 : 1}
+        >
+          <Text style={styles.locationName}>
+            {activeLocation?.name}{allLocations.length > 1 ? ' ▾' : ''}
+          </Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={styles.postButton}
           onPress={() => router.push('/(manager)/post-callout')}
@@ -135,6 +142,18 @@ export default function ManagerHomeScreen() {
           <Text style={styles.postButtonText}>+ Post Callout</Text>
         </TouchableOpacity>
       </View>
+
+      <LocationPickerSheet
+        visible={showPicker}
+        locations={allLocations}
+        activeLocationId={activeLocation?.id ?? ''}
+        onSelect={(loc: Location) => setActiveLocation(loc)}
+        onClose={() => setShowPicker(false)}
+        onAddLocation={() => {
+          setShowPicker(false);
+          router.push('/onboarding/restaurant');
+        }}
+      />
 
       {showBanner && (
         <TouchableOpacity
@@ -215,7 +234,7 @@ const styles = StyleSheet.create({
   },
   locationName: { fontSize: 20, fontWeight: '800', color: '#fff' },
   postButton: {
-    backgroundColor: '#E8634A',
+    backgroundColor: '#F5853F',
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 10,

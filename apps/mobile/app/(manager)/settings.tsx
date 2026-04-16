@@ -58,7 +58,7 @@ export default function ManagerSettingsScreen() {
     return () => sub.remove();
   }, [refresh]);
 
-  function handleUpgrade(tier: 'starter' | 'pro') {
+  function handleUpgrade(tier: 'pro' | 'business') {
     const url = `${WEB_URL}/upgrade?location_id=${location?.id}&tier=${tier}`;
     Linking.openURL(url);
   }
@@ -97,8 +97,8 @@ export default function ManagerSettingsScreen() {
   const trialDays = daysUntil(loc?.trial_ends_at);
   const periodEnd = loc?.subscription_period_end;
 
-  const planLabel = tier === 'pro' ? 'Business' : tier === 'starter' ? 'Pro' : 'Starter';
-  const planColor = tier === 'pro' ? '#10b981' : tier === 'starter' ? '#0E7C7B' : '#6b7280';
+  const planLabel = tier === 'business' ? 'Business' : tier === 'pro' ? 'Pro' : 'Free';
+  const planColor = tier === 'business' ? '#10b981' : tier === 'pro' ? '#0E7C7B' : '#6b7280';
 
   return (
     <>
@@ -182,14 +182,14 @@ export default function ManagerSettingsScreen() {
         {/* Action buttons */}
         {(status === 'trialing' || status === 'expired' || tier === 'free') && (
           <View style={styles.upgradeCards}>
-            <TouchableOpacity style={styles.upgradeCard} onPress={() => handleUpgrade('starter')}>
+            <TouchableOpacity style={styles.upgradeCard} onPress={() => handleUpgrade('pro')}>
               <Text style={styles.upgradePlan}>Pro</Text>
               <Text style={styles.upgradePrice}>$49 / mo</Text>
               <Text style={styles.upgradeFeature}>Up to 30 workers</Text>
               <Text style={styles.upgradeFeature}>Push + SMS notifications</Text>
               <Text style={styles.upgradeFeature}>14-day free trial</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.upgradeCard, styles.upgradeCardPro]} onPress={() => handleUpgrade('pro')}>
+            <TouchableOpacity style={[styles.upgradeCard, styles.upgradeCardPro]} onPress={() => handleUpgrade('business')}>
               <Text style={styles.upgradePlan}>Business</Text>
               <Text style={styles.upgradePrice}>$99 / mo</Text>
               <Text style={styles.upgradeFeature}>Unlimited workers</Text>
@@ -199,8 +199,8 @@ export default function ManagerSettingsScreen() {
           </View>
         )}
 
-        {status === 'active' && tier !== 'pro' && (
-          <TouchableOpacity style={styles.actionButton} onPress={() => handleUpgrade('pro')}>
+        {status === 'active' && tier !== 'business' && (
+          <TouchableOpacity style={styles.actionButton} onPress={() => handleUpgrade('business')}>
             <Text style={styles.actionButtonText}>Upgrade to Business</Text>
           </TouchableOpacity>
         )}

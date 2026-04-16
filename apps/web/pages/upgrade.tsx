@@ -1,23 +1,45 @@
 import { useState } from 'react';
 import { GetServerSideProps } from 'next';
 import { supabaseAdmin } from '../lib/supabase';
-import { stripe, PLANS } from '../lib/stripe';
 import Head from 'next/head';
+
+type Tier = 'pro' | 'business';
+type Billing = 'monthly' | 'annual';
 
 interface Props {
   locationId: string;
-  tier: 'starter' | 'pro';
+  tier: Tier;
+  initialBilling: Billing;
   locationName: string;
 }
 
-export default function UpgradePage({ locationId, tier, locationName }: Props) {
+const PLAN_INFO = {
+  pro: {
+    name: 'Pro',
+    monthly: '$49/mo',
+    annual: '$39/mo',
+    annualNote: 'billed $468/yr',
+    features: ['Up to 30 workers', 'Push + SMS notifications', '14-day free trial'],
+  },
+  business: {
+    name: 'Business',
+    monthly: '$99/mo',
+    annual: '$79/mo',
+    annualNote: 'billed $948/yr',
+    features: ['Unlimited workers', 'Push + SMS notifications', 'Analytics dashboard', '14-day free trial'],
+  },
+};
+
+export default function UpgradePage({ locationId, tier, initialBilling, locationName }: Props) {
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
-  const [step, setStep] = useState<'phone' | 'otp' | 'checkout'>('phone');
+  const [step, setStep] = useState<'phone' | 'otp'>('phone');
+  const [billing, setBilling] = useState<Billing>(initialBilling);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const plan = PLANS[tier];
+  const plan = PLAN_INFO[tier];
+  const displayPrice = billing === 'annual' ? plan.annual : plan.monthly;
 
   async function handleSendOtp() {
     setLoading(true);
@@ -49,7 +71,7 @@ export default function UpgradePage({ locationId, tier, locationName }: Props) {
     const res = await fetch('/api/auth/verify-otp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: e164, token: otp }),
+      body: JSON.stringify({ phone: e164, token: otp, location_id: locationId, tier, billing }),
     });
 
     if (res.ok) {
@@ -71,7 +93,40 @@ export default function UpgradePage({ locationId, tier, locationName }: Props) {
         <div style={styles.card}>
           <h1 style={styles.logo}>Truvex</h1>
           <h2 style={styles.title}>Upgrade {locationName} to {plan.name}</h2>
-          <p style={styles.price}>{plan.price}</p>
+
+          {/* Billing toggle */}
+          <div style={styles.toggleRow}>
+            <button
+              style={{ ...styles.toggleBtn, ...(billing === 'monthly' ? styles.toggleActive : {}) }}
+              onClick={() => setBilling('monthly')}
+            >
+              Monthly
+            </button>
+            <button
+              style={{ ...styles.toggleBtn, ...(billing === 'annual' ? styles.toggleActive : {}) }}
+              onClick={() => setBilling('annual')}
+            >
+              Annual
+              <span style={styles.savePill}>Save 20%</span>
+            </button>
+          </div>
+
+          <div style={styles.priceBlock}>
+            <span style={styles.price}>{displayPrice}</span>
+            {billing === 'annual' && (
+              <span style={styles.annualNote}>{plan.annualNote}</span>
+            )}
+          </div>
+
+          <ul style={styles.features}>
+            {plan.features.map((f) => (
+              <li key={f} style={styles.feature}>
+                <span style={styles.checkIcon}>✓</span> {f}
+              </li>
+            ))}
+          </ul>
+
+          <hr style={styles.divider} />
 
           {step === 'phone' && (
             <>
@@ -87,7 +142,11 @@ export default function UpgradePage({ locationId, tier, locationName }: Props) {
                 />
               </div>
               {error && <p style={styles.error}>{error}</p>}
-              <button style={styles.button} onClick={handleSendOtp} disabled={loading}>
+              <button
+                style={{ ...styles.button, ...(loading ? styles.buttonDisabled : {}) }}
+                onClick={handleSendOtp}
+                disabled={loading}
+              >
                 {loading ? 'Sending…' : 'Send verification code'}
               </button>
             </>
@@ -105,8 +164,18 @@ export default function UpgradePage({ locationId, tier, locationName }: Props) {
                 maxLength={6}
               />
               {error && <p style={styles.error}>{error}</p>}
-              <button style={styles.button} onClick={handleVerifyOtp} disabled={loading || otp.length !== 6}>
+              <button
+                style={{
+                  ...styles.button,
+                  ...((loading || otp.length !== 6) ? styles.buttonDisabled : {}),
+                }}
+                onClick={handleVerifyOtp}
+                disabled={loading || otp.length !== 6}
+              >
                 {loading ? 'Verifying…' : 'Continue to payment'}
+              </button>
+              <button style={styles.backBtn} onClick={() => setStep('phone')}>
+                ← Change number
               </button>
             </>
           )}
@@ -119,57 +188,122 @@ export default function UpgradePage({ locationId, tier, locationName }: Props) {
 const styles: Record<string, React.CSSProperties> = {
   container: {
     minHeight: '100vh',
-    background: '#1a1a2e',
+    background: '#0f0f1a',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     padding: '20px',
   },
   card: {
-    background: '#2a2a40',
-    borderRadius: 16,
+    background: '#1a1a2e',
+    borderRadius: 18,
     padding: '40px',
-    maxWidth: 420,
+    maxWidth: 440,
     width: '100%',
     display: 'flex',
     flexDirection: 'column',
     gap: 16,
+    border: '1px solid #2a2a40',
   },
-  logo: { color: '#fff', fontSize: 28, fontWeight: 800, margin: 0 },
+  logo: { color: '#0E7C7B', fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.5 },
   title: { color: '#fff', fontSize: 20, fontWeight: 700, margin: 0 },
-  price: { color: '#4f46e5', fontSize: 24, fontWeight: 800, margin: 0 },
+  toggleRow: {
+    display: 'flex',
+    background: '#0f0f1a',
+    borderRadius: 10,
+    padding: 4,
+    gap: 4,
+  },
+  toggleBtn: {
+    flex: 1,
+    padding: '8px 12px',
+    borderRadius: 8,
+    border: 'none',
+    background: 'transparent',
+    color: '#7A8899',
+    fontSize: 14,
+    fontWeight: 600,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  toggleActive: {
+    background: '#2a2a40',
+    color: '#fff',
+  },
+  savePill: {
+    background: '#F5853F22',
+    color: '#F5853F',
+    fontSize: 11,
+    fontWeight: 700,
+    padding: '2px 7px',
+    borderRadius: 20,
+  },
+  priceBlock: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: 10,
+  },
+  price: { color: '#F5853F', fontSize: 32, fontWeight: 800 },
+  annualNote: { color: '#7A8899', fontSize: 13 },
+  features: {
+    listStyle: 'none',
+    padding: 0,
+    margin: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+  },
+  feature: { color: '#aaa', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 },
+  checkIcon: { color: '#0E7C7B', fontWeight: 700, fontSize: 14 },
+  divider: { border: 'none', borderTop: '1px solid #2a2a40', margin: '4px 0' },
   label: { color: '#aaa', fontSize: 14, margin: 0 },
   phoneRow: { display: 'flex', alignItems: 'center', gap: 8 },
   countryCode: { color: '#fff', fontSize: 16, fontWeight: 600 },
   input: {
     flex: 1,
-    background: '#1a1a2e',
+    background: '#2a2a40',
     border: 'none',
-    borderRadius: 8,
-    padding: '12px 16px',
+    borderRadius: 10,
+    padding: '13px 16px',
     color: '#fff',
     fontSize: 16,
     outline: 'none',
     width: '100%',
   },
   button: {
-    background: '#4f46e5',
+    background: '#F5853F',
     color: '#fff',
     border: 'none',
-    borderRadius: 10,
+    borderRadius: 12,
     padding: '14px',
     fontSize: 16,
     fontWeight: 700,
     cursor: 'pointer',
     width: '100%',
   },
+  buttonDisabled: {
+    opacity: 0.5,
+    cursor: 'not-allowed',
+  },
+  backBtn: {
+    background: 'transparent',
+    border: 'none',
+    color: '#7A8899',
+    fontSize: 14,
+    cursor: 'pointer',
+    textAlign: 'center' as const,
+    padding: '4px 0',
+  },
   error: { color: '#ef4444', fontSize: 14, margin: 0 },
 };
 
 export const getServerSideProps: GetServerSideProps = async (ctx) => {
-  const { location_id, tier } = ctx.query;
+  const { location_id, tier, billing } = ctx.query;
 
-  if (!location_id || !tier || (tier !== 'starter' && tier !== 'pro')) {
+  if (!location_id || !tier || (tier !== 'pro' && tier !== 'business')) {
     return { notFound: true };
   }
 
@@ -185,7 +319,8 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
   return {
     props: {
       locationId: location_id as string,
-      tier: tier as 'starter' | 'pro',
+      tier: tier as Tier,
+      initialBilling: billing === 'annual' ? 'annual' : 'monthly',
       locationName: location.name,
     },
   };

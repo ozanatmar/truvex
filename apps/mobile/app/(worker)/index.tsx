@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: 10, marginTop: 8 },
   acceptButton: {
     flex: 1,
-    backgroundColor: '#E8634A',
+    backgroundColor: '#F5853F',
     borderRadius: 10,
     height: 44,
     alignItems: 'center',

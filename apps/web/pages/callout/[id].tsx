@@ -184,7 +184,7 @@ const s: Record<string, React.CSSProperties> = {
   time: { color: '#ccc', fontSize: 18, fontWeight: 700, margin: 0 },
   notes: { color: '#666', fontSize: 14, fontStyle: 'italic', margin: 0 },
   actions: { display: 'flex', gap: 10, marginTop: 8 },
-  acceptBtn: { flex: 1, background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 10, padding: '14px', fontSize: 16, fontWeight: 700, cursor: 'pointer' },
+  acceptBtn: { flex: 1, background: '#F5853F', color: '#fff', border: 'none', borderRadius: 10, padding: '14px', fontSize: 16, fontWeight: 700, cursor: 'pointer' },
   declineBtn: { flex: 1, background: '#2a2a40', color: '#aaa', border: '1px solid #444', borderRadius: 10, padding: '14px', fontSize: 16, cursor: 'pointer' },
   closedBanner: { background: '#6b728022', borderRadius: 10, padding: 16, marginTop: 8 },
   closedText: { color: '#aaa', fontSize: 14, margin: 0, textAlign: 'center' },

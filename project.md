@@ -1,6 +1,6 @@
 # Truvex — Project Reference
 
-Last updated: 2026-04-16
+Last updated: 2026-04-17
 
 ---
 
@@ -11,7 +11,8 @@ Design tokens are defined in `apps/mobile/lib/theme.ts` (exported as `C` for col
 | Role | Token | Value |
 |---|---|---|
 | Brand / active state | `C.primary` | `#0E7C7B` |
-| Primary CTA (Post, Accept, Add) | `C.coral` | `#E8634A` |
+| Primary CTA (Post, Accept, Add) | `C.cta` | `#F5853F` |
+| Secondary accent / warning | `C.coral` | `#E8634A` |
 | Card background | `C.bgCard` | `#1a1a2e` |
 | Screen background | `C.bgDark` | `#0f0f1a` |
 | Secondary text | `C.textSub` | `#7A8899` |
@@ -42,6 +43,7 @@ Truvex is a React Native (Expo) mobile app for restaurant shift callout manageme
 | `EXPO_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key |
 | `EXPO_PUBLIC_WEB_URL` | Web app base URL — used to build upgrade/subscription URLs opened in browser (fallback: `https://truvex.app`) |
+| `EXPO_PUBLIC_SUPABASE_FUNCTIONS_URL` | (Derived from `EXPO_PUBLIC_SUPABASE_URL/functions/v1`) Used by support screen to call `notify-support` Edge Function |
 
 ### Web (`apps/web/.env.local`)
 | Variable | Purpose |
@@ -52,8 +54,10 @@ Truvex is a React Native (Expo) mobile app for restaurant shift callout manageme
 | `STRIPE_SECRET_KEY` | Stripe server-side key |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signature secret |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe client-side key |
-| `STRIPE_STARTER_PRICE_ID` | Stripe price ID for $49/mo Starter plan |
-| `STRIPE_PRO_PRICE_ID` | Stripe price ID for $99/mo Pro plan |
+| `STRIPE_PRO_PRICE_ID` | Stripe price ID for $49/mo Pro plan (monthly) |
+| `STRIPE_PRO_ANNUAL_PRICE_ID` | Stripe price ID for $39/mo Pro plan (billed $468/yr) |
+| `STRIPE_BUSINESS_PRICE_ID` | Stripe price ID for $99/mo Business plan (monthly) |
+| `STRIPE_BUSINESS_ANNUAL_PRICE_ID` | Stripe price ID for $79/mo Business plan (billed $948/yr) |
 | `NEXT_PUBLIC_APP_URL` | Web app base URL (e.g. `https://truvex.app`) |
 | `TWILIO_ACCOUNT_SID` | Twilio account SID |
 | `TWILIO_AUTH_TOKEN` | Twilio auth token |
@@ -68,6 +72,7 @@ Truvex is a React Native (Expo) mobile app for restaurant shift callout manageme
 | `TWILIO_AUTH_TOKEN` | Twilio auth token |
 | `TWILIO_PHONE_NUMBER` | Twilio sending number |
 | `EXPO_ACCESS_TOKEN` | Expo push notification access token |
+| `SUPPORT_OWNER_PHONE` | Owner's phone number to receive support SMS (notify-support function) |
 
 ---
 
@@ -85,6 +90,7 @@ All tables live in the `truvex` schema. See `supabase/migrations/001_truvex_sche
 | `truvex.callouts` | Posted shift callouts. Tracks timing for auto-assign and escalation. |
 | `truvex.callout_responses` | Worker accepted/declined responses per callout. |
 | `truvex.notification_log` | Log of every push/SMS sent. Used for 2-min SMS fallback. |
+| `truvex.support_tickets` | In-app support messages submitted by Business-tier managers. |
 
 **Schema note:** During development these tables share Namedrop's Supabase project. At launch, export `truvex` schema → import as `public` in a new Supabase project + update env vars only.
 
@@ -160,6 +166,8 @@ All tables live in the `truvex` schema. See `supabase/migrations/001_truvex_sche
 | `/(manager)/team/add` | Add worker (direct link or pending invite) |
 | `/(manager)/team/[id]` | Edit worker name + roles |
 | `/(manager)/history` | Past callouts |
+| `/(manager)/analytics` | Callout stats + worker response table (Business tier only) |
+| `/(manager)/support` | In-app support (Free: gate; Pro: email link; Business: form) |
 | `/(manager)/settings` | Subscription management + account + tutorial |
 
 ### Worker

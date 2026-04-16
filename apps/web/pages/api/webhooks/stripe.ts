@@ -66,10 +66,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Determine tier from price metadata or existing record
       let tier: string | null = null;
       const priceId = sub.items.data[0]?.price?.id;
-      if (priceId === process.env.STRIPE_PRO_PRICE_ID) {
+      if (
+        priceId === process.env.STRIPE_BUSINESS_PRICE_ID ||
+        priceId === process.env.STRIPE_BUSINESS_ANNUAL_PRICE_ID
+      ) {
+        tier = 'business';
+      } else if (
+        priceId === process.env.STRIPE_PRO_PRICE_ID ||
+        priceId === process.env.STRIPE_PRO_ANNUAL_PRICE_ID
+      ) {
         tier = 'pro';
-      } else if (priceId === process.env.STRIPE_STARTER_PRICE_ID) {
-        tier = 'starter';
       }
 
       // Map Stripe status to our subscription_status

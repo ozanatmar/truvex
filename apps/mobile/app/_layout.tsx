@@ -51,7 +51,7 @@ function useAuthGuard() {
 export default function RootLayout() {
   useFonts({ DMSans_700Bold, DMSans_800ExtraBold });
 
-  const { setSession, setProfile, setActiveLocation, setMemberType, setIsLoading, reset, isLoading } =
+  const { setSession, setProfile, setActiveLocation, setAllLocations, setMemberType, setIsLoading, reset, isLoading } =
     useStore();
   const bootstrapping = useRef(false);
   const hasBootstrapped = useRef(false);
@@ -147,16 +147,15 @@ export default function RootLayout() {
       }
 
       report(50);
-      const { data: managedLocation } = await supabase
+      const { data: managedLocations } = await supabase
         .schema('truvex').from('locations')
         .select('*')
         .eq('manager_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .order('created_at', { ascending: false });
 
-      if (managedLocation) {
-        setActiveLocation(managedLocation);
+      if (managedLocations && managedLocations.length > 0) {
+        setAllLocations(managedLocations);
+        setActiveLocation(managedLocations[0]);
         setMemberType('manager');
         report(100);
         return;

@@ -130,7 +130,10 @@ export default function TeamScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Team</Text>
+        <View>
+          <Text style={styles.title}>Team</Text>
+          <Text style={styles.workerCount}>{workers.length} worker{workers.length !== 1 ? 's' : ''}</Text>
+        </View>
         <TouchableOpacity
           style={styles.addButton}
           onPress={() => router.push('/(manager)/team/add')}
@@ -229,8 +232,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a2e',
   },
   title: { fontSize: 24, fontWeight: '800', color: '#fff' },
+  workerCount: { fontSize: 12, color: '#7A8899', marginTop: 2 },
   addButton: {
-    backgroundColor: '#E8634A',
+    backgroundColor: '#F5853F',
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 8,

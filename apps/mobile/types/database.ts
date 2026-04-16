@@ -1,4 +1,4 @@
-export type SubscriptionTier = 'free' | 'starter' | 'pro';
+export type SubscriptionTier = 'free' | 'pro' | 'business';
 export type MemberType = 'manager' | 'worker';
 export type MemberStatus = 'pending' | 'active';
 export type CalloutStatus = 'open' | 'pending_selection' | 'filled' | 'cancelled' | 'expired';

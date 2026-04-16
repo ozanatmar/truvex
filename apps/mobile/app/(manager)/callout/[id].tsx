@@ -9,10 +9,13 @@ import {
   Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as Clipboard from 'expo-clipboard';
 import { supabase } from '../../../lib/supabase';
 import { useStore } from '../../../lib/store';
 import { Callout, CalloutResponse, Profile, Role } from '../../../types/database';
 import { formatShiftTime, formatShiftDate } from '../../../lib/utils';
+
+const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL ?? 'https://truvex.app';
 
 interface AcceptorRow extends CalloutResponse {
   worker: Profile & { primary_role?: string };
@@ -27,6 +30,13 @@ export default function CalloutDetailScreen() {
   const [acceptors, setAcceptors] = useState<AcceptorRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [selecting, setSelecting] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopyLink() {
+    await Clipboard.setStringAsync(`${WEB_URL}/callout/${id}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   const fetchCallout = useCallback(async () => {
     if (!id) return;
@@ -156,6 +166,9 @@ export default function CalloutDetailScreen() {
             <Text style={styles.statusLabel}>Status: </Text>
             <Text style={styles.statusValue}>{callout.status.replace('_', ' ')}</Text>
           </View>
+          <TouchableOpacity style={styles.copyLinkButton} onPress={handleCopyLink}>
+            <Text style={styles.copyLinkText}>{copied ? '✓ Link copied' : 'Copy shift link'}</Text>
+          </TouchableOpacity>
         </View>
 
         <Text style={styles.sectionTitle}>
@@ -254,4 +267,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   assignedText: { color: '#10b981', fontWeight: '700', fontSize: 14 },
+  copyLinkButton: {
+    marginTop: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#2a2a40',
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  copyLinkText: { fontSize: 13, color: '#7A8899', fontWeight: '600' },
 });

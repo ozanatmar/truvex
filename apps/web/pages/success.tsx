@@ -67,7 +67,7 @@ const styles: Record<string, React.CSSProperties> = {
   title: { color: '#fff', fontSize: 28, fontWeight: 800, margin: 0 },
   subtitle: { color: '#aaa', fontSize: 16, margin: 0 },
   link: {
-    background: '#4f46e5',
+    background: '#F5853F',
     color: '#fff',
     borderRadius: 10,
     padding: '12px 32px',

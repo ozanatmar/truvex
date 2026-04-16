@@ -24,6 +24,12 @@ function formatUSPhone(raw: string): string {
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
 }
 
+const WORKER_LIMITS: Record<string, number | null> = {
+  free: 10,
+  pro: 30,
+  business: null,
+};
+
 export default function AddWorkerScreen() {
   const router = useRouter();
   const { activeLocation, session } = useStore();
@@ -33,9 +39,14 @@ export default function AddWorkerScreen() {
   const [additionalRoleIds, setAdditionalRoleIds] = useState<string[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(false);
+  const [workerCount, setWorkerCount] = useState(0);
 
   const digits = phone.replace(/\D/g, '');
   const isValid = name.trim().length > 0 && digits.length === 10 && primaryRoleId !== '';
+
+  const tier = (activeLocation as any)?.subscription_tier ?? 'free';
+  const limit = WORKER_LIMITS[tier] ?? 10;
+  const atLimit = limit !== null && workerCount >= limit;
 
   useEffect(() => {
     if (!activeLocation) return;
@@ -44,6 +55,13 @@ export default function AddWorkerScreen() {
       .select('*')
       .eq('location_id', activeLocation.id)
       .then(({ data }) => { if (data) setRoles(data); });
+
+    supabase
+      .schema('truvex').from('location_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('location_id', activeLocation.id)
+      .eq('member_type', 'worker')
+      .then(({ count }) => { if (count !== null) setWorkerCount(count); });
   }, [activeLocation]);
 
   function toggleAdditionalRole(roleId: string) {
@@ -123,6 +141,32 @@ export default function AddWorkerScreen() {
     router.back();
   }
 
+  if (atLimit) {
+    const tierLabel = tier === 'pro' ? 'Pro' : 'Free';
+    const nextTier = tier === 'free' ? 'Pro ($49/mo)' : 'Business ($99/mo)';
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Text style={styles.cancel}>Cancel</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>Add Worker</Text>
+          <View style={{ width: 40 }} />
+        </View>
+        <View style={styles.limitContainer}>
+          <Text style={styles.limitIcon}>🔒</Text>
+          <Text style={styles.limitTitle}>Worker limit reached</Text>
+          <Text style={styles.limitBody}>
+            Your {tierLabel} plan supports up to {limit} workers. Upgrade to {nextTier} to add more.
+          </Text>
+          <TouchableOpacity style={styles.upgradeButton} onPress={() => router.push('/(manager)/settings')}>
+            <Text style={styles.upgradeButtonText}>View upgrade options</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -135,7 +179,7 @@ export default function AddWorkerScreen() {
         <Text style={styles.title}>Add Worker</Text>
         <TouchableOpacity onPress={handleAdd} disabled={!isValid || loading}>
           {loading ? (
-            <ActivityIndicator color="#0E7C7B" size="small" />
+            <ActivityIndicator color="#F5853F" size="small" />
           ) : (
             <Text style={[styles.save, !isValid && styles.saveDisabled]}>Add</Text>
           )}
@@ -223,7 +267,7 @@ const styles = StyleSheet.create({
   },
   cancel: { color: '#7A8899', fontSize: 16 },
   title: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  save: { color: '#0E7C7B', fontSize: 16, fontWeight: '700' },
+  save: { color: '#F5853F', fontSize: 16, fontWeight: '700' },
   saveDisabled: { opacity: 0.4 },
   content: { padding: 20, gap: 10 },
   label: { fontSize: 13, fontWeight: '600', color: '#aaa', marginTop: 8, marginBottom: 4 },
@@ -259,4 +303,24 @@ const styles = StyleSheet.create({
   roleChipText: { color: '#666', fontSize: 13, fontWeight: '600' },
   primaryChipText: { color: '#fff' },
   additionalChipText: { color: '#7ECACA' },
+  limitContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+    gap: 16,
+  },
+  limitIcon: { fontSize: 48 },
+  limitTitle: { fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center' },
+  limitBody: { fontSize: 15, color: '#7A8899', textAlign: 'center', lineHeight: 22 },
+  upgradeButton: {
+    backgroundColor: '#F5853F',
+    borderRadius: 12,
+    height: 52,
+    paddingHorizontal: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  upgradeButtonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });

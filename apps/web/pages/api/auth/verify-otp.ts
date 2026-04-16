@@ -1,11 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabase, supabaseAdmin } from '../../../lib/supabase';
-import { stripe, PLANS } from '../../../lib/stripe';
+import { stripe, PLANS, PlanTier, BillingType } from '../../../lib/stripe';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { phone, token, location_id, tier } = req.body;
+  const { phone, token, location_id, tier, billing } = req.body;
 
   if (!phone || !token) return res.status(400).json({ error: 'Missing fields' });
 
@@ -21,8 +21,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // If location_id and tier provided, create Stripe checkout session
-  if (location_id && tier && (tier === 'starter' || tier === 'pro')) {
-    const plan = PLANS[tier as keyof typeof PLANS];
+  if (location_id && tier && (tier === 'pro' || tier === 'business')) {
+    const plan = PLANS[tier as PlanTier];
+    const billingType: BillingType = billing === 'annual' ? 'annual' : 'monthly';
+    const priceId = plan.priceIds[billingType];
 
     const { data: location } = await supabaseAdmin
       .schema('truvex')
@@ -52,14 +54,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .eq('id', location_id);
     }
 
-    // Calculate remaining trial days to pass to Stripe so the trial carry-over works
-    // (Only pass trial if the location is still in its trial period)
+    // Carry over any remaining trial days
     let trialEnd: number | undefined;
     if (location.subscription_status === 'trialing' && location.trial_ends_at) {
       const trialEndsAt = new Date(location.trial_ends_at).getTime();
       const remainingMs = trialEndsAt - Date.now();
       if (remainingMs > 0) {
-        // Stripe trial_end is a Unix timestamp (seconds)
         trialEnd = Math.floor(trialEndsAt / 1000);
       }
     }
@@ -67,11 +67,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
-      line_items: [{ price: plan.priceId, quantity: 1 }],
+      line_items: [{ price: priceId, quantity: 1 }],
       subscription_data: trialEnd ? { trial_end: trialEnd } : undefined,
       success_url: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://truvex.app'}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://truvex.app'}/upgrade?location_id=${location_id}&tier=${tier}`,
-      metadata: { location_id, tier },
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://truvex.app'}/upgrade?location_id=${location_id}&tier=${tier}&billing=${billingType}`,
+      metadata: { location_id, tier, billing: billingType },
     });
 
     return res.status(200).json({ checkoutUrl: session.url });

@@ -58,60 +58,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       break;
     }
 
-    // Subscription state changed (renewal, payment failure, cancellation scheduled, etc.)
     case 'customer.subscription.updated': {
       const sub = event.data.object as Stripe.Subscription;
       const customerId = sub.customer as string;
+      const priceId = sub.items.data[0]?.price?.id ?? '';
 
-      // Determine tier from price metadata or existing record
-      let tier: string | null = null;
-      const priceId = sub.items.data[0]?.price?.id;
-      if (
-        priceId === process.env.STRIPE_BUSINESS_PRICE_ID ||
-        priceId === process.env.STRIPE_BUSINESS_ANNUAL_PRICE_ID
-      ) {
-        tier = 'business';
-      } else if (
-        priceId === process.env.STRIPE_PRO_PRICE_ID ||
-        priceId === process.env.STRIPE_PRO_ANNUAL_PRICE_ID
-      ) {
-        tier = 'pro';
-      }
-
-      // Map Stripe status to our subscription_status
-      // Stripe statuses: trialing, active, past_due, canceled, unpaid, incomplete, incomplete_expired, paused
-      const statusMap: Record<string, string> = {
-        trialing: 'trialing',
-        active: 'active',
-        past_due: 'past_due',
-        canceled: 'cancelled',
-        unpaid: 'past_due',
-        incomplete: 'past_due',
-        incomplete_expired: 'expired',
-        paused: 'active',
-      };
-      const newStatus = statusMap[sub.status] ?? 'active';
-
-      // If cancel_at_period_end is set, we mark as cancelled but access continues
-      const effectiveStatus = sub.cancel_at_period_end ? 'cancelled' : newStatus;
-
-      const updates: Record<string, unknown> = {
-        subscription_status: effectiveStatus,
-        stripe_subscription_id: sub.id,
-        subscription_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+      const priceTierMap: Record<string, string> = {
+        [process.env.STRIPE_PRO_PRICE_ID          ?? '__']: 'pro',
+        [process.env.STRIPE_PRO_ANNUAL_PRICE_ID   ?? '__']: 'pro',
+        [process.env.STRIPE_BUSINESS_PRICE_ID     ?? '__']: 'business',
+        [process.env.STRIPE_BUSINESS_ANNUAL_PRICE_ID ?? '__']: 'business',
       };
 
-      // Only update tier if we can determine it (don't downgrade mid-cycle)
-      if (tier && (sub.status === 'active' || sub.status === 'trialing')) {
-        updates.subscription_tier = tier;
-      }
+      const tierFromPrice = priceTierMap[priceId];
+      const isActive = ['active', 'trialing'].includes(sub.status);
+      const newTier = isActive && tierFromPrice ? tierFromPrice : 'free';
 
-      // Downgrade tier when status is bad
-      if (sub.status === 'canceled' || sub.status === 'incomplete_expired') {
-        updates.subscription_tier = 'free';
-      }
-
-      await updateLocationSubscription(customerId, updates);
+      await supabaseAdmin
+        .schema('truvex')
+        .from('locations')
+        .update({ subscription_tier: newTier, stripe_subscription_id: sub.id })
+        .eq('stripe_customer_id', customerId);
       break;
     }
 

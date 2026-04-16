@@ -2,6 +2,7 @@ import { GetServerSideProps } from 'next';
 import Head from 'next/head';
 import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
+import BlogLayout from '../../components/BlogLayout';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -101,18 +102,11 @@ export default function BlogPostPage({ post }: Props) {
         <style>{`body { background: #FAFAF8; }`}</style>
       </Head>
 
-      <div style={styles.page}>
-        {/* NAV */}
-        <nav style={styles.nav}>
-          <div style={styles.navInner}>
-            <Link href="/" style={styles.navLogo}>Truvex</Link>
-            <Link href="/blog" style={styles.navBack}>← All posts</Link>
-          </div>
-        </nav>
-
+      <BlogLayout>
         {/* ARTICLE */}
         <main style={styles.main}>
           <article style={styles.article}>
+            <Link href="/blog" style={styles.backLink}>← All posts</Link>
             <header style={styles.header}>
               <p style={styles.date}>{publishedDate}</p>
               <h1 style={styles.title}>{post.title}</h1>
@@ -139,7 +133,7 @@ export default function BlogPostPage({ post }: Props) {
             </footer>
           </article>
         </main>
-      </div>
+      </BlogLayout>
     </>
   );
 }
@@ -162,48 +156,21 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
 };
 
 const styles: Record<string, React.CSSProperties> = {
-  page: {
-    minHeight: '100vh',
-    background: '#FAFAF8',
-    fontFamily: "'Lora', Georgia, serif",
-  },
-  nav: {
-    position: 'sticky',
-    top: 0,
-    background: 'rgba(250,250,248,0.97)',
-    borderBottom: '1px solid #e8e8ec',
-    zIndex: 100,
-    backdropFilter: 'blur(10px)',
-  },
-  navInner: {
-    maxWidth: 760,
-    margin: '0 auto',
-    padding: '0 24px',
-    height: 60,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  navLogo: {
-    fontFamily: "'DM Sans', sans-serif",
-    fontWeight: 800,
-    fontSize: 20,
-    color: '#0E7C7B',
-    textDecoration: 'none',
-  },
-  navBack: {
-    fontFamily: "'DM Sans', sans-serif",
-    fontSize: 14,
-    fontWeight: 600,
-    color: '#4A4A5A',
-    textDecoration: 'none',
-  },
   main: {
     maxWidth: 760,
     margin: '0 auto',
     padding: '48px 24px 80px',
   },
   article: {},
+  backLink: {
+    display: 'inline-block',
+    fontFamily: "'DM Sans', sans-serif",
+    fontSize: 14,
+    fontWeight: 600,
+    color: '#4A4A5A',
+    textDecoration: 'none',
+    marginBottom: 28,
+  },
   header: {
     marginBottom: 40,
     paddingBottom: 32,

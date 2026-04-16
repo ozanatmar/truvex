@@ -161,10 +161,12 @@ const s: Record<string, React.CSSProperties> = {
     margin: 0,
     display: 'flex',
     flexDirection: 'column' as const,
-    gap: 8,
+    gap: 12,
   },
   link: {
+    display: 'block',
     fontSize: 14,
+    lineHeight: '1.6',
     color: 'rgba(255,255,255,0.55)',
     textDecoration: 'none',
     fontFamily: "'DM Sans', sans-serif",

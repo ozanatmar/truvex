@@ -119,7 +119,7 @@ export default function ManagerHomeScreen() {
     bannerText = 'Payment failed · Update in Settings';
     bannerColor = '#ef4444';
   } else if (tier === 'free' || subStatus === 'expired') {
-    bannerText = 'Free plan — notifications off · Tap Settings to upgrade';
+    bannerText = 'Starter plan — notifications off · Tap Settings to upgrade';
   }
 
   return (

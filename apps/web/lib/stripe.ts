@@ -6,13 +6,13 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export const PLANS = {
   starter: {
-    name: 'Starter',
+    name: 'Pro',
     price: '$49/month',
     priceId: process.env.STRIPE_STARTER_PRICE_ID ?? '',
     workerLimit: 30,
   },
   pro: {
-    name: 'Pro',
+    name: 'Business',
     price: '$99/month',
     priceId: process.env.STRIPE_PRO_PRICE_ID ?? '',
     workerLimit: null, // unlimited

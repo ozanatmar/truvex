@@ -1,6 +1,23 @@
 # Truvex — Project Reference
 
-Last updated: 2026-04-15
+Last updated: 2026-04-16
+
+---
+
+## Design Tokens
+
+Design tokens are defined in `apps/mobile/lib/theme.ts` (exported as `C` for colors, `F` for fonts). All new screens must use these constants. Full documentation is in `CLAUDE.md → Design System`.
+
+| Role | Token | Value |
+|---|---|---|
+| Brand / active state | `C.primary` | `#0E7C7B` |
+| Primary CTA (Post, Accept, Add) | `C.coral` | `#E8634A` |
+| Card background | `C.bgCard` | `#1a1a2e` |
+| Screen background | `C.bgDark` | `#0f0f1a` |
+| Secondary text | `C.textSub` | `#7A8899` |
+| Title font | `F.extraBold` | `DMSans_800ExtraBold` |
+| Button font | `F.bold` | `DMSans_700Bold` |
+| Card radius | — | `18` |
 
 ---
 
@@ -24,6 +41,7 @@ Truvex is a React Native (Expo) mobile app for restaurant shift callout manageme
 |---|---|
 | `EXPO_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key |
+| `EXPO_PUBLIC_WEB_URL` | Web app base URL — used to build upgrade/subscription URLs opened in browser (fallback: `https://truvex.app`) |
 
 ### Web (`apps/web/.env.local`)
 | Variable | Purpose |

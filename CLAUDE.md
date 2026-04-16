@@ -79,6 +79,58 @@ This file is the single source of truth for building Truvex. Read it fully befor
 
 ---
 
+## Design System
+
+The native app must feel "made by the same hands" as the landing page. All color and font decisions must use the tokens in `apps/mobile/lib/theme.ts` — never hardcode off-system values in new screens.
+
+### Token file
+`apps/mobile/lib/theme.ts` exports `C` (colors) and `F` (font families).
+
+### Color tokens
+
+| Token | Value | Usage |
+|---|---|---|
+| `C.primary` | `#0E7C7B` | Teal — brand identity, active/interactive states, tab active tint, role chip selected, status "Open" |
+| `C.coral` | `#E8634A` | Coral — **primary CTA buttons only**: Post Callout, Accept shift, Add worker |
+| `C.cta` | `#F5853F` | Orange — landing page CTA; not used in native app |
+| `C.bgDark` | `#0f0f1a` | Main screen background |
+| `C.bgCard` | `#1a1a2e` | Card, header bar, and panel background |
+| `C.bgInput` | `#2a2a40` | Input fields, chips, and role pill backgrounds |
+| `C.border` | `#2a2a40` | Dividers and card borders |
+| `C.textSub` | `#7A8899` | Secondary text — back buttons, subtitles, cancel links |
+| `C.textMuted` | `#666666` | Hint copy, timestamps, inactive labels |
+| `C.textDim` | `#555555` | Placeholder text |
+| `C.success` | `#10b981` | Accepted / filled status |
+| `C.warning` | `#f59e0b` | Pending selection / trial banners |
+| `C.error` | `#ef4444` | Error states, destructive actions, cancel shift |
+| `C.neutral` | `#6b7280` | Cancelled / expired status |
+
+**Additional role chip** (secondary selected state): `backgroundColor: 'rgba(14,124,123,0.15)'`, `borderColor: C.primary`, text `#7ECACA`.
+
+### Typography
+
+| Token | Value | Usage |
+|---|---|---|
+| `F.extraBold` | `DMSans_800ExtraBold` | Screen titles, logo wordmark, role names in cards |
+| `F.bold` | `DMSans_700Bold` | Button labels, section headings |
+
+Font package: `@expo-google-fonts/dm-sans` (in `package.json`). Loaded once in `app/_layout.tsx` via `useFonts`. Matches the landing page which uses DM Sans throughout.
+
+### Shape
+- Content cards: `borderRadius: 18`
+- Inputs, action chips, small buttons: `borderRadius: 10–12`
+- Modal sheets: `borderRadius: 20` (top corners only)
+
+### Landing page sync
+The landing page CSS variables (`landing/index.html`) map directly to these tokens:
+- `--color-primary` → `C.primary` (`#0E7C7B`)
+- `--color-secondary` → `C.coral` (`#E8634A`)
+- `--color-cta` → `C.cta` (`#F5853F`)
+
+When the landing page palette changes, update `theme.ts` first, then propagate to affected screens.
+
+---
+
 ## Project Structure
 
 ```

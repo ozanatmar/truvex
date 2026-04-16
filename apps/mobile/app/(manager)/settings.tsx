@@ -15,7 +15,7 @@ import { useStore } from '../../lib/store';
 import { Location } from '../../types/database';
 import TutorialModal from '../../components/TutorialModal';
 
-const WEB_URL = 'https://truvex-web.vercel.app';
+const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL ?? 'https://truvex.app';
 
 function daysUntil(dateStr: string | null): number | null {
   if (!dateStr) return null;

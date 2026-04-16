@@ -59,6 +59,15 @@ export default function Navbar({ activePage, heroSectionId }: NavbarProps) {
               </li>
               <li>
                 <Link
+                  href="/contact"
+                  style={activePage === 'contact' ? { ...s.navLink, color: '#0E7C7B' } : s.navLink}
+                  aria-current={activePage === 'contact' ? 'page' : undefined}
+                >
+                  Contact
+                </Link>
+              </li>
+              <li>
+                <Link
                   href="/about"
                   style={activePage === 'about' ? { ...s.navLink, color: '#0E7C7B' } : s.navLink}
                   aria-current={activePage === 'about' ? 'page' : undefined}
@@ -90,7 +99,8 @@ export default function Navbar({ activePage, heroSectionId }: NavbarProps) {
           <Link href={`${prefix}#how-it-works`} style={s.mobileLink} onClick={() => setMenuOpen(false)}>Features</Link>
           <Link href={`${prefix}#pricing`} style={s.mobileLink} onClick={() => setMenuOpen(false)}>Pricing</Link>
           <Link href={`${prefix}#faq`} style={s.mobileLink} onClick={() => setMenuOpen(false)}>FAQ</Link>
-          <Link href="/about" style={s.mobileLink} onClick={() => setMenuOpen(false)}>About</Link>
+          <Link href="/contact" style={activePage === 'contact' ? { ...s.mobileLink, color: '#0E7C7B' } : s.mobileLink} onClick={() => setMenuOpen(false)}>Contact</Link>
+          <Link href="/about" style={activePage === 'about' ? { ...s.mobileLink, color: '#0E7C7B' } : s.mobileLink} onClick={() => setMenuOpen(false)}>About</Link>
           <Link
             href={`${prefix}#pricing`}
             style={{ ...s.btnPrimary, textAlign: 'center', marginTop: 14 }}

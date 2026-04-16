@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#333',
   },
   dotActive: {
-    backgroundColor: '#4f46e5',
+    backgroundColor: '#0E7C7B',
     width: 24,
   },
   nav: {
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     height: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#4f46e5',
+    backgroundColor: '#0E7C7B',
     borderRadius: 12,
   },
   nextText: {

@@ -148,7 +148,7 @@ export default function WorkerHomeScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color="#4f46e5" />
+        <ActivityIndicator color="#0E7C7B" />
       </View>
     );
   }
@@ -168,7 +168,7 @@ export default function WorkerHomeScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={() => { setRefreshing(true); fetchCallouts(); }}
-            tintColor="#4f46e5"
+            tintColor="#0E7C7B"
           />
         }
       >
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', paddingTop: 80, gap: 8 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
   emptySubtitle: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 20 },
-  card: { backgroundColor: '#1a1a2e', borderRadius: 14, padding: 16, gap: 6 },
+  card: { backgroundColor: '#1a1a2e', borderRadius: 18, padding: 16, gap: 6 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   roleName: { fontSize: 18, fontWeight: '800', color: '#fff' },
   locationName: { fontSize: 12, color: '#666', textAlign: 'right', flex: 1, marginLeft: 8 },
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: 10, marginTop: 8 },
   acceptButton: {
     flex: 1,
-    backgroundColor: '#4f46e5',
+    backgroundColor: '#E8634A',
     borderRadius: 10,
     height: 44,
     alignItems: 'center',

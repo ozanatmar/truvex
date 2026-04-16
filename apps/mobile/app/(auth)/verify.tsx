@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   backText: {
-    color: '#8888aa',
+    color: '#7A8899',
     fontSize: 16,
   },
   title: {
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 15,
-    color: '#8888aa',
+    color: '#7A8899',
     lineHeight: 22,
     marginBottom: 40,
   },
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   button: {
-    backgroundColor: '#4f46e5',
+    backgroundColor: '#0E7C7B',
     borderRadius: 12,
     height: 52,
     alignItems: 'center',
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   resend: {
-    color: '#4f46e5',
+    color: '#0E7C7B',
     fontSize: 14,
     textAlign: 'center',
     fontWeight: '600',

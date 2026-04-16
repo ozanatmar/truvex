@@ -60,7 +60,7 @@ export default function WorkerHistoryScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color="#4f46e5" />
+        <ActivityIndicator color="#0E7C7B" />
       </View>
     );
   }
@@ -78,7 +78,7 @@ export default function WorkerHistoryScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={() => { setRefreshing(true); fetch(); }}
-            tintColor="#4f46e5"
+            tintColor="#0E7C7B"
           />
         }
       >
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', paddingTop: 80, gap: 8 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
   emptySubtitle: { fontSize: 14, color: '#666' },
-  card: { backgroundColor: '#1a1a2e', borderRadius: 14, padding: 16, gap: 4 },
+  card: { backgroundColor: '#1a1a2e', borderRadius: 18, padding: 16, gap: 4 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   roleName: { fontSize: 16, fontWeight: '700', color: '#fff' },
   status: { fontSize: 12, color: '#aaa', fontWeight: '600', textTransform: 'capitalize' },

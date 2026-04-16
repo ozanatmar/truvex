@@ -24,7 +24,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  open: '#4f46e5',
+  open: '#0E7C7B',
   pending_selection: '#f59e0b',
   filled: '#10b981',
   cancelled: '#6b7280',
@@ -98,7 +98,7 @@ export default function ManagerHomeScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color="#4f46e5" />
+        <ActivityIndicator color="#0E7C7B" />
       </View>
     );
   }
@@ -149,7 +149,7 @@ export default function ManagerHomeScreen() {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchCallouts(); }} tintColor="#4f46e5" />
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchCallouts(); }} tintColor="#0E7C7B" />
         }
       >
         {callouts.length === 0 ? (
@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
   },
   locationName: { fontSize: 20, fontWeight: '800', color: '#fff' },
   postButton: {
-    backgroundColor: '#4f46e5',
+    backgroundColor: '#E8634A',
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', paddingTop: 80, gap: 8 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
   emptySubtitle: { fontSize: 14, color: '#666' },
-  card: { backgroundColor: '#1a1a2e', borderRadius: 14, padding: 16, gap: 6 },
+  card: { backgroundColor: '#1a1a2e', borderRadius: 18, padding: 16, gap: 6 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   roleName: { fontSize: 17, fontWeight: '700', color: '#fff' },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },

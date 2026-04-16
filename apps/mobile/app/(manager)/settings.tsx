@@ -98,7 +98,7 @@ export default function ManagerSettingsScreen() {
   const periodEnd = loc?.subscription_period_end;
 
   const planLabel = tier === 'pro' ? 'Business' : tier === 'starter' ? 'Pro' : 'Starter';
-  const planColor = tier === 'pro' ? '#10b981' : tier === 'starter' ? '#4f46e5' : '#6b7280';
+  const planColor = tier === 'pro' ? '#10b981' : tier === 'starter' ? '#0E7C7B' : '#6b7280';
 
   return (
     <>
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontWeight: '800', color: '#fff' },
   section: { padding: 20, gap: 12 },
   sectionLabel: { fontSize: 12, fontWeight: '700', color: '#555', textTransform: 'uppercase', letterSpacing: 1 },
-  card: { backgroundColor: '#1a1a2e', borderRadius: 14, paddingHorizontal: 16 },
+  card: { backgroundColor: '#1a1a2e', borderRadius: 18, paddingHorizontal: 16 },
   row: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingVertical: 14,
@@ -297,15 +297,15 @@ const styles = StyleSheet.create({
     flex: 1, backgroundColor: '#1a1a2e', borderRadius: 14, padding: 16,
     borderWidth: 1, borderColor: '#2a2a40', gap: 4,
   },
-  upgradeCardPro: { borderColor: '#4f46e5' },
+  upgradeCardPro: { borderColor: '#0E7C7B' },
   upgradePlan: { fontSize: 16, fontWeight: '800', color: '#fff', marginBottom: 2 },
-  upgradePrice: { fontSize: 20, fontWeight: '800', color: '#4f46e5', marginBottom: 6 },
+  upgradePrice: { fontSize: 20, fontWeight: '800', color: '#0E7C7B', marginBottom: 6 },
   upgradeFeature: { fontSize: 12, color: '#666' },
   actionButton: {
     backgroundColor: '#1a1a2e', borderRadius: 12, paddingVertical: 14,
     alignItems: 'center', borderWidth: 1, borderColor: '#2a2a40',
   },
-  actionButtonText: { color: '#4f46e5', fontSize: 15, fontWeight: '700' },
+  actionButtonText: { color: '#0E7C7B', fontSize: 15, fontWeight: '700' },
   cancelSubText: { color: '#ef4444', fontSize: 13, textAlign: 'center', paddingVertical: 8 },
   signOutButton: { margin: 20, alignItems: 'center', paddingVertical: 14 },
   signOutText: { color: '#ef4444', fontSize: 15, fontWeight: '600' },

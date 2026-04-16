@@ -104,12 +104,12 @@ const styles = StyleSheet.create({
   logo: {
     fontSize: 40,
     fontWeight: '800',
-    color: '#fff',
+    color: '#0E7C7B',
     marginBottom: 8,
   },
   tagline: {
     fontSize: 16,
-    color: '#8888aa',
+    color: '#7A8899',
     marginBottom: 48,
   },
   form: {
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   button: {
-    backgroundColor: '#4f46e5',
+    backgroundColor: '#0E7C7B',
     borderRadius: 12,
     height: 52,
     alignItems: 'center',

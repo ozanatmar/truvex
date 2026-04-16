@@ -135,7 +135,7 @@ export default function AddWorkerScreen() {
         <Text style={styles.title}>Add Worker</Text>
         <TouchableOpacity onPress={handleAdd} disabled={!isValid || loading}>
           {loading ? (
-            <ActivityIndicator color="#4f46e5" size="small" />
+            <ActivityIndicator color="#0E7C7B" size="small" />
           ) : (
             <Text style={[styles.save, !isValid && styles.saveDisabled]}>Add</Text>
           )}
@@ -221,9 +221,9 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     backgroundColor: '#1a1a2e',
   },
-  cancel: { color: '#8888aa', fontSize: 16 },
+  cancel: { color: '#7A8899', fontSize: 16 },
   title: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  save: { color: '#4f46e5', fontSize: 16, fontWeight: '700' },
+  save: { color: '#0E7C7B', fontSize: 16, fontWeight: '700' },
   saveDisabled: { opacity: 0.4 },
   content: { padding: 20, gap: 10 },
   label: { fontSize: 13, fontWeight: '600', color: '#aaa', marginTop: 8, marginBottom: 4 },
@@ -254,9 +254,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
-  primaryChip: { backgroundColor: '#4f46e5', borderColor: '#4f46e5' },
-  additionalChip: { backgroundColor: '#312e81', borderColor: '#4f46e5' },
+  primaryChip: { backgroundColor: '#0E7C7B', borderColor: '#0E7C7B' },
+  additionalChip: { backgroundColor: 'rgba(14,124,123,0.15)', borderColor: '#0E7C7B' },
   roleChipText: { color: '#666', fontSize: 13, fontWeight: '600' },
   primaryChipText: { color: '#fff' },
-  additionalChipText: { color: '#a5b4fc' },
+  additionalChipText: { color: '#7ECACA' },
 });

@@ -122,7 +122,7 @@ export default function TeamScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color="#4f46e5" />
+        <ActivityIndicator color="#0E7C7B" />
       </View>
     );
   }
@@ -146,7 +146,7 @@ export default function TeamScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={() => { setRefreshing(true); fetchWorkers(); }}
-            tintColor="#4f46e5"
+            tintColor="#0E7C7B"
           />
         }
       >
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 24, fontWeight: '800', color: '#fff' },
   addButton: {
-    backgroundColor: '#4f46e5',
+    backgroundColor: '#E8634A',
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', paddingTop: 80, gap: 8 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
   emptySubtitle: { fontSize: 14, color: '#666' },
-  card: { backgroundColor: '#1a1a2e', borderRadius: 14, overflow: 'hidden' },
+  card: { backgroundColor: '#1a1a2e', borderRadius: 18, overflow: 'hidden' },
   cardMain: { padding: 16 },
   workerInfo: { gap: 4 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
   pendingText: { color: '#f59e0b', fontSize: 11, fontWeight: '700' },
   mutedBadge: { backgroundColor: '#6b728022', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
   mutedText: { color: '#6b7280', fontSize: 11, fontWeight: '700' },
-  roleText: { fontSize: 13, color: '#8888aa', fontWeight: '600' },
+  roleText: { fontSize: 13, color: '#7A8899', fontWeight: '600' },
   additionalRoles: { fontSize: 12, color: '#555' },
   phoneText: { fontSize: 12, color: '#555', marginTop: 2 },
   cardActions: {
@@ -263,6 +263,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: 'center',
   },
-  actionText: { fontSize: 13, color: '#8888aa', fontWeight: '600' },
+  actionText: { fontSize: 13, color: '#7A8899', fontWeight: '600' },
   removeText: { color: '#ef4444' },
 });

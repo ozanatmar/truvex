@@ -123,7 +123,7 @@ export default function CalloutDetailScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color="#4f46e5" />
+        <ActivityIndicator color="#0E7C7B" />
       </View>
     );
   }
@@ -214,11 +214,11 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     backgroundColor: '#1a1a2e',
   },
-  back: { color: '#8888aa', fontSize: 16 },
+  back: { color: '#7A8899', fontSize: 16 },
   title: { color: '#fff', fontSize: 17, fontWeight: '700' },
   scroll: { flex: 1 },
   content: { padding: 20, gap: 12 },
-  infoCard: { backgroundColor: '#1a1a2e', borderRadius: 14, padding: 18, gap: 6 },
+  infoCard: { backgroundColor: '#1a1a2e', borderRadius: 18, padding: 18, gap: 6 },
   roleName: { fontSize: 22, fontWeight: '800', color: '#fff' },
   dateText: { fontSize: 14, color: '#aaa' },
   timeText: { fontSize: 16, color: '#ccc', fontWeight: '600' },
@@ -237,10 +237,10 @@ const styles = StyleSheet.create({
   },
   workerInfo: { flex: 1, gap: 3 },
   workerName: { fontSize: 16, fontWeight: '700', color: '#fff' },
-  workerRole: { fontSize: 13, color: '#8888aa' },
+  workerRole: { fontSize: 13, color: '#7A8899' },
   respondedAt: { fontSize: 12, color: '#555', marginTop: 2 },
   selectButton: {
-    backgroundColor: '#4f46e5',
+    backgroundColor: '#0E7C7B',
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 8,

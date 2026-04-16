@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#333',
   },
   dotActive: {
-    backgroundColor: '#4f46e5',
+    backgroundColor: '#0E7C7B',
   },
   title: {
     fontSize: 26,
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 15,
-    color: '#8888aa',
+    color: '#7A8899',
     marginBottom: 24,
   },
   input: {
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   button: {
-    backgroundColor: '#4f46e5',
+    backgroundColor: '#0E7C7B',
     borderRadius: 12,
     height: 52,
     alignItems: 'center',

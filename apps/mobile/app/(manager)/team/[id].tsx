@@ -93,7 +93,7 @@ export default function EditWorkerScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color="#4f46e5" />
+        <ActivityIndicator color="#0E7C7B" />
       </View>
     );
   }
@@ -110,7 +110,7 @@ export default function EditWorkerScreen() {
         <Text style={styles.title}>Edit Worker</Text>
         <TouchableOpacity onPress={handleSave} disabled={saving}>
           {saving ? (
-            <ActivityIndicator color="#4f46e5" size="small" />
+            <ActivityIndicator color="#0E7C7B" size="small" />
           ) : (
             <Text style={styles.save}>Save</Text>
           )}
@@ -185,9 +185,9 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     backgroundColor: '#1a1a2e',
   },
-  cancel: { color: '#8888aa', fontSize: 16 },
+  cancel: { color: '#7A8899', fontSize: 16 },
   title: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  save: { color: '#4f46e5', fontSize: 16, fontWeight: '700' },
+  save: { color: '#0E7C7B', fontSize: 16, fontWeight: '700' },
   content: { padding: 20, gap: 10 },
   label: { fontSize: 13, fontWeight: '600', color: '#aaa', marginTop: 8, marginBottom: 4 },
   input: {
@@ -206,9 +206,9 @@ const styles = StyleSheet.create({
   },
   roleGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   roleChip: { borderWidth: 1, borderColor: '#333', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
-  primaryChip: { backgroundColor: '#4f46e5', borderColor: '#4f46e5' },
-  additionalChip: { backgroundColor: '#312e81', borderColor: '#4f46e5' },
+  primaryChip: { backgroundColor: '#0E7C7B', borderColor: '#0E7C7B' },
+  additionalChip: { backgroundColor: 'rgba(14,124,123,0.15)', borderColor: '#0E7C7B' },
   roleChipText: { color: '#666', fontSize: 13, fontWeight: '600' },
   primaryChipText: { color: '#fff' },
-  additionalChipText: { color: '#a5b4fc' },
+  additionalChipText: { color: '#7ECACA' },
 });

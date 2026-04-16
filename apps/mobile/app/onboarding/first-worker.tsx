@@ -170,7 +170,7 @@ export default function FirstWorkerScreen() {
 
         <Text style={styles.label}>Primary Role</Text>
         {loadingRoles ? (
-          <ActivityIndicator color="#4f46e5" />
+          <ActivityIndicator color="#0E7C7B" />
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.roleScroll}>
             {roles.map((role) => (
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#333',
   },
   dotActive: {
-    backgroundColor: '#4f46e5',
+    backgroundColor: '#0E7C7B',
   },
   title: {
     fontSize: 26,
@@ -245,19 +245,19 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 15,
-    color: '#8888aa',
+    color: '#7A8899',
     marginBottom: 24,
   },
   contactsButton: {
     borderWidth: 1,
-    borderColor: '#4f46e5',
+    borderColor: '#0E7C7B',
     borderRadius: 12,
     height: 48,
     alignItems: 'center',
     justifyContent: 'center',
   },
   contactsButtonText: {
-    color: '#4f46e5',
+    color: '#0E7C7B',
     fontWeight: '700',
     fontSize: 15,
   },
@@ -313,8 +313,8 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   roleChipSelected: {
-    backgroundColor: '#4f46e5',
-    borderColor: '#4f46e5',
+    backgroundColor: '#0E7C7B',
+    borderColor: '#0E7C7B',
   },
   roleChipText: {
     color: '#aaa',
@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   button: {
-    backgroundColor: '#4f46e5',
+    backgroundColor: '#0E7C7B',
     borderRadius: 12,
     height: 52,
     alignItems: 'center',

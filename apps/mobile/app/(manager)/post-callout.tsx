@@ -144,7 +144,7 @@ export default function PostCalloutScreen() {
         </TouchableOpacity>
         <Text style={styles.title}>Post Callout</Text>
         <TouchableOpacity onPress={handlePost} disabled={!isValid || loading}>
-          {loading ? <ActivityIndicator color="#4f46e5" /> : (
+          {loading ? <ActivityIndicator color="#0E7C7B" /> : (
             <Text style={[styles.post, !isValid && styles.postDisabled]}>Post</Text>
           )}
         </TouchableOpacity>
@@ -326,9 +326,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16, backgroundColor: '#1a1a2e',
   },
-  cancel: { color: '#8888aa', fontSize: 16 },
+  cancel: { color: '#7A8899', fontSize: 16 },
   title: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  post: { color: '#4f46e5', fontSize: 16, fontWeight: '700' },
+  post: { color: '#0E7C7B', fontSize: 16, fontWeight: '700' },
   postDisabled: { opacity: 0.4 },
   scroll: { flex: 1 },
   content: { padding: 20, gap: 10 },
@@ -343,22 +343,22 @@ const styles = StyleSheet.create({
   presetRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   presetChipWrap: { flexDirection: 'row', alignItems: 'center' },
   presetChip: {
-    backgroundColor: '#1a1a2e', borderWidth: 1, borderColor: '#4f46e5',
+    backgroundColor: '#1a1a2e', borderWidth: 1, borderColor: '#0E7C7B',
     borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, borderRightWidth: 0,
     borderTopRightRadius: 0, borderBottomRightRadius: 0,
   },
-  presetLabel: { color: '#a5b4fc', fontSize: 12, fontWeight: '700' },
+  presetLabel: { color: '#7ECACA', fontSize: 12, fontWeight: '700' },
   presetTime: { color: '#fff', fontSize: 11, marginTop: 2 },
   presetDelete: {
-    backgroundColor: '#1a1a2e', borderWidth: 1, borderColor: '#4f46e5', borderLeftWidth: 0,
+    backgroundColor: '#1a1a2e', borderWidth: 1, borderColor: '#0E7C7B', borderLeftWidth: 0,
     borderTopRightRadius: 10, borderBottomRightRadius: 10,
     paddingHorizontal: 10, paddingVertical: 8, justifyContent: 'center',
   },
   presetDeleteText: { color: '#ef4444', fontSize: 16, fontWeight: '700' },
-  savePresetLink: { color: '#4f46e5', fontSize: 13, fontWeight: '600', marginTop: 4 },
+  savePresetLink: { color: '#0E7C7B', fontSize: 13, fontWeight: '600', marginTop: 4 },
   roleGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   roleChip: { borderWidth: 1, borderColor: '#333', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
-  roleChipSelected: { backgroundColor: '#4f46e5', borderColor: '#4f46e5' },
+  roleChipSelected: { backgroundColor: '#0E7C7B', borderColor: '#0E7C7B' },
   roleChipText: { color: '#888', fontSize: 14, fontWeight: '600' },
   roleChipTextSelected: { color: '#fff' },
   input: { backgroundColor: '#1a1a2e', borderRadius: 10, height: 48, paddingHorizontal: 14, color: '#fff', fontSize: 15 },
@@ -368,7 +368,7 @@ const styles = StyleSheet.create({
   pickerSheet: { backgroundColor: '#1a1a2e', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 32 },
   pickerHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16 },
   pickerTitle: { fontSize: 16, fontWeight: '700', color: '#fff' },
-  pickerDone: { fontSize: 16, fontWeight: '700', color: '#4f46e5' },
+  pickerDone: { fontSize: 16, fontWeight: '700', color: '#0E7C7B' },
   picker: { backgroundColor: '#1a1a2e' },
   // Save preset modal
   modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#00000088', padding: 32 },
@@ -377,6 +377,6 @@ const styles = StyleSheet.create({
   modalSub: { fontSize: 13, color: '#666' },
   modalInput: { backgroundColor: '#0f0f1a', borderRadius: 10, height: 48, paddingHorizontal: 14, color: '#fff', fontSize: 15 },
   modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 20, marginTop: 8 },
-  modalCancel: { color: '#8888aa', fontSize: 15, fontWeight: '600' },
-  modalSave: { color: '#4f46e5', fontSize: 15, fontWeight: '700' },
+  modalCancel: { color: '#7A8899', fontSize: 15, fontWeight: '600' },
+  modalSave: { color: '#0E7C7B', fontSize: 15, fontWeight: '700' },
 });

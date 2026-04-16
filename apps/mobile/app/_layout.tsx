@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { View, Animated, StyleSheet } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { useFonts, DMSans_700Bold, DMSans_800ExtraBold } from '@expo-google-fonts/dm-sans';
 import { useStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
 import {
@@ -48,6 +49,8 @@ function useAuthGuard() {
 }
 
 export default function RootLayout() {
+  useFonts({ DMSans_700Bold, DMSans_800ExtraBold });
+
   const { setSession, setProfile, setActiveLocation, setMemberType, setIsLoading, reset, isLoading } =
     useStore();
   const bootstrapping = useRef(false);

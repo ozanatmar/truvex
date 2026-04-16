@@ -13,7 +13,7 @@ import { CalloutWithRole } from '../../types/database';
 import { formatShiftTime, formatShiftDate } from '../../lib/utils';
 
 const STATUS_COLORS: Record<string, string> = {
-  open: '#4f46e5',
+  open: '#0E7C7B',
   pending_selection: '#f59e0b',
   filled: '#10b981',
   cancelled: '#6b7280',
@@ -47,7 +47,7 @@ export default function ManagerHistoryScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color="#4f46e5" />
+        <ActivityIndicator color="#0E7C7B" />
       </View>
     );
   }
@@ -65,7 +65,7 @@ export default function ManagerHistoryScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={() => { setRefreshing(true); fetch(); }}
-            tintColor="#4f46e5"
+            tintColor="#0E7C7B"
           />
         }
       >
@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', paddingTop: 80, gap: 8 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
   emptySubtitle: { fontSize: 14, color: '#666' },
-  card: { backgroundColor: '#1a1a2e', borderRadius: 14, padding: 16, gap: 4 },
+  card: { backgroundColor: '#1a1a2e', borderRadius: 18, padding: 16, gap: 4 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   roleName: { fontSize: 16, fontWeight: '700', color: '#fff' },
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },

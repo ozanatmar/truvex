@@ -154,12 +154,12 @@ export default function WorkerSettingsScreen() {
                 </Text>
               </View>
               {loading || toggling ? (
-                <ActivityIndicator color="#4f46e5" />
+                <ActivityIndicator color="#0E7C7B" />
               ) : (
                 <Switch
                   value={isMuted}
                   onValueChange={handleToggleMute}
-                  trackColor={{ false: '#333', true: '#4f46e5' }}
+                  trackColor={{ false: '#333', true: '#0E7C7B' }}
                   thumbColor="#fff"
                 />
               )}
@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontWeight: '800', color: '#fff' },
   section: { padding: 20, paddingBottom: 0, gap: 10 },
   sectionLabel: { fontSize: 12, fontWeight: '700', color: '#555', textTransform: 'uppercase', letterSpacing: 1 },
-  card: { backgroundColor: '#1a1a2e', borderRadius: 14, paddingHorizontal: 16 },
+  card: { backgroundColor: '#1a1a2e', borderRadius: 18, paddingHorizontal: 16 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14 },
   divider: { height: 1, backgroundColor: '#2a2a40' },
   rowLabel: { fontSize: 15, color: '#aaa' },
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
   settingSubtitle: { fontSize: 12, color: '#666', marginTop: 4 },
   locationRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14 },
   locationName: { fontSize: 15, color: '#fff', fontWeight: '600' },
-  activeLabel: { fontSize: 11, color: '#4f46e5', fontWeight: '700', marginTop: 2 },
+  activeLabel: { fontSize: 11, color: '#0E7C7B', fontWeight: '700', marginTop: 2 },
   leaveText: { color: '#ef4444', fontSize: 14, fontWeight: '600' },
   signOutButton: { margin: 20, alignItems: 'center', paddingVertical: 14 },
   signOutText: { color: '#ef4444', fontSize: 15, fontWeight: '600' },

@@ -28,11 +28,8 @@ additional_redirect_urls = ["truvex://"]
 jwt_expiry = 3600
 enable_signup = true
 
-[auth.sms]
-enabled = true
-provider = "twilio"
-
 [auth.sms.twilio]
+enabled = true
 account_sid = "env(TWILIO_ACCOUNT_SID)"
 message_service_sid = "env(TWILIO_MESSAGE_SERVICE_SID)"
 auth_token = "env(TWILIO_AUTH_TOKEN)"

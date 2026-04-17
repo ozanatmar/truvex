@@ -100,9 +100,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
   if (error) {
-    // 23505 = unique_violation. Return success to avoid email enumeration.
+    // 23505 = unique_violation. Signal duplicate so the UI can show a
+    // distinct message instead of the generic success state.
     if ((error as { code?: string }).code === '23505') {
-      return res.status(200).json({ ok: true });
+      return res.status(200).json({ ok: true, already: true });
     }
     console.error('[waitlist] insert failed:', error);
     return res.status(500).json({ error: 'Something went wrong' });

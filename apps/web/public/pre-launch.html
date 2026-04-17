@@ -1185,14 +1185,18 @@
         body: JSON.stringify({ email: email, source: source })
       }).then(function(res) {
         if (res.status >= 200 && res.status < 300) {
-          var successMsg = document.createElement('p');
-          successMsg.className = 'waitlist-success';
-          successMsg.style.color = '#10b981';
-          successMsg.style.fontWeight = '600';
-          successMsg.style.margin = '0';
-          successMsg.textContent = "You're on the list. We'll email you when Truvex opens.";
-          form.innerHTML = '';
-          form.appendChild(successMsg);
+          return res.json().catch(function() { return {}; }).then(function(data) {
+            var successMsg = document.createElement('p');
+            successMsg.className = 'waitlist-success';
+            successMsg.style.color = '#10b981';
+            successMsg.style.fontWeight = '600';
+            successMsg.style.margin = '0';
+            successMsg.textContent = data && data.already
+              ? "You're already on the list. We'll email you when Truvex opens."
+              : "You're on the list. We'll email you when Truvex opens.";
+            form.innerHTML = '';
+            form.appendChild(successMsg);
+          });
         } else if (res.status === 429) {
           btn.disabled = false;
           btn.textContent = originalLabel;

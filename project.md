@@ -62,6 +62,8 @@ Truvex is a React Native (Expo) mobile app for restaurant shift callout manageme
 | `TWILIO_ACCOUNT_SID` | Twilio account SID |
 | `TWILIO_AUTH_TOKEN` | Twilio auth token |
 | `TWILIO_PHONE_NUMBER` | Twilio sending number |
+| `IS_LAUNCHED` | Launch gate. `"true"` serves the live marketing site; anything else (unset/empty/`"false"`) redirects all marketing surfaces to `/pre-launch`. |
+| `WAITLIST_IP_SALT` | Server-side salt used to sha256-hash visitor IPs on the `/api/waitlist` endpoint. Required in production. |
 
 ### Supabase Edge Functions (set via dashboard Secrets)
 | Variable | Purpose |
@@ -91,6 +93,7 @@ All tables live in the `truvex` schema. See `supabase/migrations/001_truvex_sche
 | `truvex.callout_responses` | Worker accepted/declined responses per callout. |
 | `truvex.notification_log` | Log of every push/SMS sent. Used for 2-min SMS fallback. |
 | `truvex.support_tickets` | In-app support messages submitted by Business-tier managers. |
+| `truvex.waitlist_signups` | Email signups captured from the pre-launch landing page. |
 
 **Schema note:** During development these tables share Namedrop's Supabase project. At launch, export `truvex` schema → import as `public` in a new Supabase project + update env vars only.
 

@@ -33,6 +33,14 @@
 @media (min-width: 640px)  { .blog-footer-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 1024px) { .blog-footer-grid { grid-template-columns: 2fr 1fr 1fr 1fr; gap: 48px; } }
 
+/* Blog index cards: stack thumbnail above text on narrow screens */
+@media (max-width: 640px) {
+  .blog-card {
+    grid-template-columns: 1fr !important;
+  }
+}
+.blog-card:hover { opacity: 0.8; }
+
 /* Blog post body styles */
 .blog-body p { margin: 0 0 24px; }
 .blog-body h2 {

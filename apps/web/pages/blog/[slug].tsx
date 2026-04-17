@@ -56,6 +56,7 @@ interface BlogPost {
   description: string | null;
   body_html: string;
   published_at: string;
+  hero_image_url: string | null;
 }
 
 interface Props {
@@ -90,8 +91,21 @@ export default function BlogPostPage({ post }: Props) {
           content={`https://truvex.app/blog/${post.slug}`}
         />
         <meta property="og:site_name" content="Truvex" />
-        <meta name="twitter:card" content="summary" />
+        {post.hero_image_url && (
+          <>
+            <meta property="og:image" content={post.hero_image_url} />
+            <meta property="og:image:width" content="1536" />
+            <meta property="og:image:height" content="1024" />
+          </>
+        )}
+        <meta
+          name="twitter:card"
+          content={post.hero_image_url ? 'summary_large_image' : 'summary'}
+        />
         <meta name="twitter:title" content={post.title} />
+        {post.hero_image_url && (
+          <meta name="twitter:image" content={post.hero_image_url} />
+        )}
         <link
           rel="canonical"
           href={`https://truvex.app/blog/${post.slug}`}
@@ -110,6 +124,19 @@ export default function BlogPostPage({ post }: Props) {
                 <p style={styles.description}>{post.description}</p>
               )}
             </header>
+
+            {post.hero_image_url && (
+              <div style={styles.heroWrap}>
+                <img
+                  src={post.hero_image_url}
+                  alt={post.title}
+                  style={styles.heroImg}
+                  width={1536}
+                  height={1024}
+                  loading="eager"
+                />
+              </div>
+            )}
 
             <div
               className="blog-body"
@@ -140,7 +167,7 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
   const { data, error } = await supabase
     .schema('truvex')
     .from('blog_posts')
-    .select('id, title, slug, description, body_html, published_at')
+    .select('id, title, slug, description, body_html, published_at, hero_image_url')
     .eq('slug', slug)
     .single();
 
@@ -171,6 +198,18 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: 40,
     paddingBottom: 32,
     borderBottom: '1px solid #e8e8ec',
+  },
+  heroWrap: {
+    marginBottom: 40,
+    borderRadius: 18,
+    overflow: 'hidden',
+    background: '#e8e8ec',
+  },
+  heroImg: {
+    display: 'block',
+    width: '100%',
+    height: 'auto',
+    objectFit: 'cover',
   },
   date: {
     fontFamily: "'DM Sans', sans-serif",

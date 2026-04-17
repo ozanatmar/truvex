@@ -14,6 +14,7 @@ interface PostSummary {
   slug: string;
   description: string | null;
   published_at: string;
+  hero_image_url: string | null;
 }
 
 export default function BlogIndex({ posts }: { posts: PostSummary[] }) {
@@ -48,19 +49,34 @@ export default function BlogIndex({ posts }: { posts: PostSummary[] }) {
                   key={post.slug}
                   href={`/blog/${post.slug}`}
                   style={styles.card}
+                  className="blog-card"
                 >
-                  <p style={styles.cardDate}>
-                    {new Date(post.published_at).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                    })}
-                  </p>
-                  <h2 style={styles.cardTitle}>{post.title}</h2>
-                  {post.description && (
-                    <p style={styles.cardDesc}>{post.description}</p>
+                  {post.hero_image_url && (
+                    <div style={styles.thumbWrap}>
+                      <img
+                        src={post.hero_image_url}
+                        alt={post.title}
+                        style={styles.thumbImg}
+                        width={320}
+                        height={213}
+                        loading="lazy"
+                      />
+                    </div>
                   )}
-                  <span style={styles.cardLink}>Read →</span>
+                  <div style={styles.cardBody}>
+                    <p style={styles.cardDate}>
+                      {new Date(post.published_at).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                    </p>
+                    <h2 style={styles.cardTitle}>{post.title}</h2>
+                    {post.description && (
+                      <p style={styles.cardDesc}>{post.description}</p>
+                    )}
+                    <span style={styles.cardLink}>Read →</span>
+                  </div>
                 </Link>
               ))}
             </div>
@@ -75,7 +91,7 @@ export const getServerSideProps: GetServerSideProps = async () => {
   const { data, error } = await supabase
     .schema('truvex')
     .from('blog_posts')
-    .select('title, slug, description, published_at')
+    .select('title, slug, description, published_at, hero_image_url')
     .order('published_at', { ascending: false })
     .limit(50);
 
@@ -113,12 +129,31 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 2,
   },
   card: {
-    display: 'block',
+    display: 'grid',
+    gridTemplateColumns: '200px 1fr',
+    gap: 24,
     padding: '28px 0',
     borderBottom: '1px solid #e8e8ec',
     textDecoration: 'none',
     color: 'inherit',
     transition: 'opacity 0.15s',
+    alignItems: 'start',
+  },
+  thumbWrap: {
+    width: '100%',
+    aspectRatio: '3 / 2',
+    borderRadius: 12,
+    overflow: 'hidden',
+    background: '#e8e8ec',
+  },
+  thumbImg: {
+    display: 'block',
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+  },
+  cardBody: {
+    minWidth: 0,
   },
   cardDate: {
     fontFamily: "'DM Sans', sans-serif",

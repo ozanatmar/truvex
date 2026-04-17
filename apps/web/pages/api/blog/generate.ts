@@ -11,6 +11,61 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
 });
 
+const IMAGE_STYLE_SCAFFOLD = `Photorealistic editorial photograph. Natural warm lighting, documentary style, shallow depth of field. Authentic and unposed, as if captured for a magazine feature. Setting is a busy American restaurant or hospitality workplace unless the topic clearly calls for another context. Frame human subjects from behind, over the shoulder, or at mid-distance to avoid identifiable likenesses. Absolutely no text, no words, no signage readable text, no logos, no UI mockups, no on-screen graphics, no phone screens with visible interface. Shot on full-frame camera, 35mm lens, 3:2 aspect ratio.`;
+
+const IMAGE_PROMPT_SYSTEM = `You turn a blog post into a short image-generation prompt. Output one sentence describing the visual subject only — not the style, not the lighting, not the framing (those are already handled). The subject should reflect the situation discussed in the post: a specific scene in a restaurant or hospitality workplace. Avoid text, logos, or screens. Do not output anything besides the sentence itself. No quotes, no preamble.`;
+
+async function deriveImagePrompt(title: string, bodyHtml: string): Promise<string> {
+  const bodyText = bodyHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 500);
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-5.4',
+    max_completion_tokens: 120,
+    temperature: 0.7,
+    messages: [
+      { role: 'system', content: IMAGE_PROMPT_SYSTEM },
+      { role: 'user', content: `Title: ${title}\n\nExcerpt: ${bodyText}` },
+    ],
+  });
+  return (completion.choices[0]?.message?.content ?? '').trim();
+}
+
+async function generateAndUploadHeroImage(slug: string, title: string, bodyHtml: string): Promise<string | null> {
+  try {
+    const subject = await deriveImagePrompt(title, bodyHtml);
+    if (!subject) return null;
+
+    const fullPrompt = `${IMAGE_STYLE_SCAFFOLD}\n\nSubject: ${subject}`;
+
+    const img = await openai.images.generate({
+      model: 'gpt-image-1.5',
+      prompt: fullPrompt,
+      size: '1536x1024',
+      n: 1,
+    });
+
+    const b64 = img.data?.[0]?.b64_json;
+    if (!b64) return null;
+
+    const buffer = Buffer.from(b64, 'base64');
+    const path = `blog/${slug}.png`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('truvex')
+      .upload(path, buffer, { contentType: 'image/png', upsert: true });
+    if (uploadError) {
+      console.error('[blog image] upload failed:', uploadError);
+      return null;
+    }
+
+    const { data: publicData } = supabase.storage.from('truvex').getPublicUrl(path);
+    return publicData.publicUrl ?? null;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('[blog image] generation failed:', message);
+    return null;
+  }
+}
+
 const SYSTEM_PROMPT = `You are a content writer for Truvex, a mobile app that helps restaurant and hospitality managers fill last-minute shift callouts. When a worker calls in sick, the manager taps one button and all qualified off-duty workers are notified instantly via push notification and SMS. Multiple workers can accept, and the manager selects who covers.
 
 The founder of Truvex, Ozan Atmar, worked in a restaurant kitchen in Wisconsin Dells and spent over a decade supplying the HORECA industry across Bulgaria and the EU. The brand voice is grounded, honest, and written by someone who has lived inside these problems — not a marketing agency observing from the outside.
@@ -169,6 +224,20 @@ export default async function handler(
     return res.status(500).json({ error: 'Failed to save blog post' });
   }
 
+  // Image generation is best-effort. If it fails, the post still ships
+  // without a hero image and can be regenerated later.
+  const imageUrl = await generateAndUploadHeroImage(data.slug, parsed.title, parsed.body_html);
+  if (imageUrl) {
+    const { error: imgUpdateError } = await supabase
+      .schema('truvex')
+      .from('blog_posts')
+      .update({ hero_image_url: imageUrl })
+      .eq('slug', data.slug);
+    if (imgUpdateError) {
+      console.error('[blog image] failed to persist hero_image_url:', imgUpdateError);
+    }
+  }
+
   const url = `https://truvex.app/blog/${data.slug}`;
-  return res.status(201).json({ url, slug: data.slug });
+  return res.status(201).json({ url, slug: data.slug, image_url: imageUrl });
 }

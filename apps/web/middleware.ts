@@ -40,8 +40,15 @@ export function middleware(request: NextRequest) {
   if (!isLaunched) {
     if (pathname.startsWith('/api/')) return NextResponse.next();
     if (pathname === '/pre-launch') return NextResponse.next();
+    if (pathname === '/about-pre-launch') return NextResponse.next();
     if (pathname === '/coming-soon') return NextResponse.next();
     if (isStaticAsset(pathname)) return NextResponse.next();
+
+    // About paths redirect to the pre-launch About clone, not the waitlist
+    // landing, so visitors following About links land on founder copy.
+    if (pathname === '/about' || pathname === '/about.html') {
+      return NextResponse.redirect(new URL('/about-pre-launch', request.url));
+    }
 
     // Functional surfaces that must keep working pre-launch.
     if (

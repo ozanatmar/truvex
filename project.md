@@ -198,3 +198,5 @@ Shown during app bootstrap (session check → profile → location lookup). Impl
 | `/subscription` | Stripe Customer Portal redirect (OTP auth → portal) |
 | `/subscription/cancel` | Cancel subscription (OTP auth → cancel at period end) |
 | `/subscription/return` | Post-portal landing → deep link to `truvex://subscription-updated` |
+| `/pre-launch` | Pre-launch holding page with waitlist email capture. Shown when `IS_LAUNCHED` is not `"true"`; served via middleware redirect. `noindex`. |
+| `/coming-soon` | Emergency maintenance page. Shown when `MAINTENANCE_MODE=true`; takes precedence over the launch gate. `noindex`. |

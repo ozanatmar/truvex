@@ -44,6 +44,12 @@ export function middleware(request: NextRequest) {
     if (pathname === '/coming-soon') return NextResponse.next();
     if (isStaticAsset(pathname)) return NextResponse.next();
 
+    // Blog stays reachable pre-launch to build SEO. The blog layout's own
+    // nav/footer links will bounce back through the gate, which is fine.
+    if (pathname === '/blog' || pathname.startsWith('/blog/')) {
+      return NextResponse.next();
+    }
+
     // About paths redirect to the pre-launch About clone, not the waitlist
     // landing, so visitors following About links land on founder copy.
     if (pathname === '/about' || pathname === '/about.html') {

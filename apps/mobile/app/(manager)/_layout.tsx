@@ -59,8 +59,6 @@ export default function ManagerLayout() {
       {/* Modal screens — hidden from tab bar */}
       <Tabs.Screen name="post-callout" options={{ href: null }} />
       <Tabs.Screen name="callout/[id]" options={{ href: null }} />
-      <Tabs.Screen name="team/add" options={{ href: null }} />
-      <Tabs.Screen name="team/[id]" options={{ href: null }} />
     </Tabs>
   );
 }

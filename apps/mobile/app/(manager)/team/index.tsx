@@ -11,10 +11,10 @@ import {
   Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { supabase } from '../../lib/supabase';
-import { useStore } from '../../lib/store';
-import { WorkerWithRoles } from '../../types/database';
-import { formatPhoneDisplay } from '../../lib/utils';
+import { supabase } from '../../../lib/supabase';
+import { useStore } from '../../../lib/store';
+import { WorkerWithRoles } from '../../../types/database';
+import { formatPhoneDisplay } from '../../../lib/utils';
 
 export default function TeamScreen() {
   const router = useRouter();

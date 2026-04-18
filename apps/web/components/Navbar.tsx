@@ -77,9 +77,6 @@ export default function Navbar({ activePage, heroSectionId }: NavbarProps) {
               </li>
             </ul>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <Link href={`${prefix}#pricing`} className="site-nav-cta" style={s.btnPrimary}>
-                Start Free Trial
-              </Link>
               <button
                 className="site-hamburger"
                 onClick={() => setMenuOpen((o) => !o)}
@@ -101,13 +98,6 @@ export default function Navbar({ activePage, heroSectionId }: NavbarProps) {
           <Link href={`${prefix}#faq`} style={s.mobileLink} onClick={() => setMenuOpen(false)}>FAQ</Link>
           <Link href="/contact" style={activePage === 'contact' ? { ...s.mobileLink, color: '#0E7C7B' } : s.mobileLink} onClick={() => setMenuOpen(false)}>Contact</Link>
           <Link href="/about" style={activePage === 'about' ? { ...s.mobileLink, color: '#0E7C7B' } : s.mobileLink} onClick={() => setMenuOpen(false)}>About</Link>
-          <Link
-            href={`${prefix}#pricing`}
-            style={{ ...s.btnPrimary, textAlign: 'center', marginTop: 14 }}
-            onClick={() => setMenuOpen(false)}
-          >
-            Start Free Trial
-          </Link>
         </div>
       )}
     </header>
@@ -142,22 +132,6 @@ const s: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     color: '#1A1A2E',
     textDecoration: 'none',
-  },
-  btnPrimary: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: '#F5853F',
-    color: '#fff',
-    fontFamily: "'DM Sans', sans-serif",
-    fontWeight: 700,
-    fontSize: 15,
-    padding: '10px 20px',
-    borderRadius: 12,
-    textDecoration: 'none',
-    whiteSpace: 'nowrap',
-    border: 'none',
-    cursor: 'pointer',
   },
   bar: {
     display: 'block',

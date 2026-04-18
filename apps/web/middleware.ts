@@ -56,6 +56,17 @@ export function middleware(request: NextRequest) {
       return NextResponse.next();
     }
 
+    // Legal pages must stay reachable pre-launch. The waitlist page itself
+    // already links to them in the footer, so they need to resolve even
+    // before launch.
+    if (
+      pathname === '/privacy' ||
+      pathname === '/terms' ||
+      pathname === '/cookies'
+    ) {
+      return NextResponse.next();
+    }
+
     // About paths redirect to the pre-launch About clone, not the waitlist
     // landing, so visitors following About links land on founder copy.
     if (pathname === '/about' || pathname === '/about.html') {

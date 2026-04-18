@@ -10,21 +10,12 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+// Quiet mid-article aside. Not a hard sell — reads as a side note from the
+// author, same brand voice as the surrounding copy.
 const APP_STRIP_HTML = `
-<div style="margin: 40px 0; padding: 24px 28px; background: #f0f7f7; border-radius: 14px; border-left: 4px solid #0E7C7B;">
-  <p style="font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #0E7C7B; margin: 0 0 8px;">Truvex App</p>
-  <p style="font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 600; color: #1A1A2E; margin: 0 0 16px; line-height: 1.4;">One tap to fill a last-minute callout. Free for teams up to 10.</p>
-  <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-    <a href="https://truvex.app/#download" style="display: inline-flex; align-items: center; gap: 8px; background: #1A1A2E; color: #fff; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; padding: 10px 18px; border-radius: 8px; text-decoration: none;">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-      App Store
-    </a>
-    <a href="https://truvex.app/#download" style="display: inline-flex; align-items: center; gap: 8px; background: #1A1A2E; color: #fff; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; padding: 10px 18px; border-radius: 8px; text-decoration: none;">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3.18 23.76c.3.17.64.22.98.15l12.08-6.98-2.61-2.61-10.45 9.44zm-1.81-20.1c-.05.17-.07.35-.07.54v15.6c0 .19.02.38.08.55l.06.06 8.74-8.74v-.2L1.31 3.6l.06.06zM20.12 10.1l-2.5-1.45-2.93 2.93 2.93 2.93 2.52-1.45c.72-.41.72-1.55-.02-1.96zM4.17.42L16.25 7.4l-2.62 2.62L3.18.59A1.17 1.17 0 014.17.42z"/></svg>
-      Google Play
-    </a>
-  </div>
-</div>
+<aside style="margin: 36px 0; padding: 16px 20px; background: #f7f7f9; border-left: 3px solid #0E7C7B; border-radius: 6px; font-family: 'DM Sans', sans-serif; font-size: 15px; line-height: 1.6; color: #4A4A5A;">
+  Truvex was built for this exact moment: one tap pings every qualified off-duty worker, and the manager picks who covers. Free for teams up to 10. <a href="https://truvex.app/#download" style="color: #0E7C7B; font-weight: 600; text-decoration: underline;">See how it works</a>.
+</aside>
 `;
 
 function stripHtmlToText(html: string): string {
@@ -131,11 +122,20 @@ interface BlogPost {
   schema_data: Record<string, unknown> | null;
 }
 
-interface Props {
-  post: BlogPost;
+interface RelatedPost {
+  title: string;
+  slug: string;
+  description: string | null;
+  hero_image_url: string | null;
+  hero_image_alt: string | null;
 }
 
-export default function BlogPostPage({ post }: Props) {
+interface Props {
+  post: BlogPost;
+  related: RelatedPost[];
+}
+
+export default function BlogPostPage({ post, related }: Props) {
   const publishedDate = new Date(post.published_at).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
@@ -246,7 +246,13 @@ export default function BlogPostPage({ post }: Props) {
         {/* ARTICLE */}
         <main style={styles.main}>
           <article style={styles.article}>
-            <Link href="/blog" style={styles.backLink}>← All posts</Link>
+            <nav aria-label="Breadcrumb" style={styles.breadcrumb}>
+              <Link href="/" style={styles.breadcrumbLink}>Home</Link>
+              <span style={styles.breadcrumbSep}>/</span>
+              <Link href="/blog" style={styles.breadcrumbLink}>Blog</Link>
+              <span style={styles.breadcrumbSep}>/</span>
+              <span style={styles.breadcrumbCurrent}>{post.title}</span>
+            </nav>
             <header style={styles.header}>
               <p style={styles.date}>{publishedDate}</p>
               <h1 style={styles.title}>{post.title}</h1>
@@ -289,13 +295,77 @@ export default function BlogPostPage({ post }: Props) {
               dangerouslySetInnerHTML={{ __html: enrichedHtml }}
             />
 
+            <div style={styles.shareRow} aria-label="Share this post">
+              <span style={styles.shareLabel}>Share</span>
+              <a
+                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(post.title)}&url=${encodeURIComponent(url)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={styles.shareBtn}
+              >
+                X
+              </a>
+              <a
+                href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={styles.shareBtn}
+              >
+                LinkedIn
+              </a>
+              <button
+                type="button"
+                style={styles.shareBtn}
+                onClick={() => {
+                  if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                    navigator.clipboard.writeText(url);
+                  }
+                }}
+              >
+                Copy link
+              </button>
+            </div>
+
+            {related.length > 0 && (
+              <section aria-label="Keep reading" style={styles.related}>
+                <h2 style={styles.relatedHeading}>Keep reading</h2>
+                <div style={styles.relatedGrid}>
+                  {related.map((rp) => (
+                    <Link
+                      key={rp.slug}
+                      href={`/blog/${rp.slug}`}
+                      style={styles.relatedCard}
+                      className="blog-related-card"
+                    >
+                      {rp.hero_image_url && (
+                        <div style={styles.relatedThumbWrap}>
+                          <img
+                            src={optimizedImageUrl(rp.hero_image_url, { width: 400, height: 267, resize: 'cover' }) ?? rp.hero_image_url}
+                            alt={rp.hero_image_alt && rp.hero_image_alt.trim().length > 0 ? rp.hero_image_alt : rp.title}
+                            style={styles.relatedThumbImg}
+                            width={400}
+                            height={267}
+                            loading="lazy"
+                          />
+                        </div>
+                      )}
+                      <h3 style={styles.relatedTitle}>{rp.title}</h3>
+                      {rp.description && (
+                        <p style={styles.relatedDesc}>{rp.description}</p>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+
             <footer style={styles.footer}>
               <div style={styles.cta}>
                 <p style={styles.ctaText}>
                   Truvex was built for this exact problem. Free for teams up to 10 workers, no credit card required.
                 </p>
                 <Link href="/#pricing" style={styles.ctaButton}>
-                  Start Free — No Credit Card
+                  Start Free, No Credit Card
                 </Link>
               </div>
             </footer>
@@ -322,7 +392,18 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
     return { notFound: true };
   }
 
-  return { props: { post: data } };
+  // Simple related-posts strategy: three most recent other posts. No tags
+  // to match on yet, so recency is the honest signal until editorial
+  // metadata justifies something smarter.
+  const { data: relatedData } = await supabase
+    .schema('truvex')
+    .from('blog_posts')
+    .select('title, slug, description, hero_image_url, hero_image_alt')
+    .neq('slug', slug)
+    .order('published_at', { ascending: false })
+    .limit(3);
+
+  return { props: { post: data, related: relatedData ?? [] } };
 };
 
 const styles: Record<string, React.CSSProperties> = {
@@ -332,14 +413,30 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '48px 24px 80px',
   },
   article: {},
-  backLink: {
-    display: 'inline-block',
+  breadcrumb: {
     fontFamily: "'DM Sans', sans-serif",
-    fontSize: 14,
-    fontWeight: 600,
-    color: '#4A4A5A',
-    textDecoration: 'none',
+    fontSize: 13,
+    color: '#8A8A9A',
     marginBottom: 28,
+    display: 'flex',
+    gap: 8,
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  breadcrumbLink: {
+    color: '#4A4A5A',
+    fontWeight: 600,
+    textDecoration: 'none',
+  },
+  breadcrumbSep: {
+    color: '#c4c4cc',
+  },
+  breadcrumbCurrent: {
+    color: '#8A8A9A',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    maxWidth: 260,
   },
   header: {
     marginBottom: 40,
@@ -414,6 +511,94 @@ const styles: Record<string, React.CSSProperties> = {
   tocLink: {
     color: '#0E7C7B',
     textDecoration: 'none',
+  },
+  shareRow: {
+    marginTop: 48,
+    paddingTop: 24,
+    borderTop: '1px solid #e8e8ec',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  shareLabel: {
+    fontFamily: "'DM Sans', sans-serif",
+    fontSize: 13,
+    fontWeight: 700,
+    color: '#4A4A5A',
+    textTransform: 'uppercase',
+    letterSpacing: '0.08em',
+    marginRight: 6,
+  },
+  shareBtn: {
+    display: 'inline-block',
+    fontFamily: "'DM Sans', sans-serif",
+    fontSize: 13,
+    fontWeight: 600,
+    color: '#1A1A2E',
+    background: '#fff',
+    border: '1px solid #d8d8dc',
+    borderRadius: 8,
+    padding: '8px 14px',
+    textDecoration: 'none',
+    cursor: 'pointer',
+  },
+  related: {
+    marginTop: 56,
+    paddingTop: 40,
+    borderTop: '1px solid #e8e8ec',
+  },
+  relatedHeading: {
+    fontFamily: "'DM Sans', sans-serif",
+    fontSize: 22,
+    fontWeight: 800,
+    color: '#1A1A2E',
+    margin: '0 0 20px',
+  },
+  relatedGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gap: 20,
+  },
+  relatedCard: {
+    display: 'block',
+    textDecoration: 'none',
+    color: 'inherit',
+    padding: 12,
+    borderRadius: 12,
+    border: '1px solid #e8e8ec',
+    background: '#fff',
+  },
+  relatedThumbWrap: {
+    aspectRatio: '3 / 2',
+    borderRadius: 8,
+    overflow: 'hidden',
+    background: '#e8e8ec',
+    marginBottom: 12,
+  },
+  relatedThumbImg: {
+    display: 'block',
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+  },
+  relatedTitle: {
+    fontFamily: "'DM Sans', sans-serif",
+    fontSize: 15,
+    fontWeight: 700,
+    color: '#1A1A2E',
+    margin: '0 0 6px',
+    lineHeight: 1.35,
+  },
+  relatedDesc: {
+    fontSize: 13,
+    color: '#4A4A5A',
+    margin: 0,
+    lineHeight: 1.5,
+    display: '-webkit-box',
+    WebkitLineClamp: 3,
+    WebkitBoxOrient: 'vertical',
+    overflow: 'hidden',
   },
   footer: {
     marginTop: 64,

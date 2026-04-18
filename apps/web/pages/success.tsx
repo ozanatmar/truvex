@@ -2,14 +2,17 @@ import { useEffect } from 'react';
 import { GetServerSideProps } from 'next';
 import Head from 'next/head';
 
-export default function SuccessPage() {
+interface Props {
+  returnTo: string;
+}
+
+export default function SuccessPage({ returnTo }: Props) {
   useEffect(() => {
-    // Redirect to deep link after a short delay
     const timer = setTimeout(() => {
-      window.location.href = 'truvex://upgrade-success';
+      window.location.href = returnTo;
     }, 2000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [returnTo]);
 
   return (
     <>
@@ -23,7 +26,7 @@ export default function SuccessPage() {
           <p style={styles.subtitle}>
             Your plan is now active. Returning you to Truvex…
           </p>
-          <a href="truvex://upgrade-success" style={styles.link}>
+          <a href={returnTo} style={styles.link}>
             Open Truvex
           </a>
         </div>
@@ -79,7 +82,8 @@ const styles: Record<string, React.CSSProperties> = {
 };
 
 export const getServerSideProps: GetServerSideProps = async (ctx) => {
-  // Stripe webhook has already updated the subscription tier at this point
-  // (handled by /api/webhooks/stripe)
-  return { props: {} };
+  const raw = typeof ctx.query.return_to === 'string' ? ctx.query.return_to : '';
+  // Accept only custom schemes or https URLs — avoid being an open redirect.
+  const safe = /^(https?:\/\/|truvex:\/\/|exp(\+[\w-]+)?:\/\/)/i.test(raw);
+  return { props: { returnTo: safe ? raw : 'truvex://upgrade-success' } };
 };

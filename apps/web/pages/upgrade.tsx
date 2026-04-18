@@ -12,6 +12,7 @@ interface Props {
   initialBilling: Billing;
   locationName: string;
   prefillPhone: string;
+  returnTo: string;
 }
 
 const PLAN_INFO = {
@@ -46,7 +47,7 @@ function formatDisplayPhone(phone: string): string {
   return e164;
 }
 
-export default function UpgradePage({ locationId, tier, initialBilling, locationName, prefillPhone }: Props) {
+export default function UpgradePage({ locationId, tier, initialBilling, locationName, prefillPhone, returnTo }: Props) {
   const [phone, setPhone] = useState(prefillPhone);
   const [otp, setOtp] = useState('');
   // If phone was prefilled from app, skip straight to OTP step
@@ -88,7 +89,7 @@ export default function UpgradePage({ locationId, tier, initialBilling, location
       const res = await fetch('/api/auth/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: e164, token: otp, location_id: locationId, tier, billing }),
+        body: JSON.stringify({ phone: e164, token: otp, location_id: locationId, tier, billing, return_to: returnTo }),
       });
 
       const text = await res.text();
@@ -341,7 +342,7 @@ const styles: Record<string, React.CSSProperties> = {
 };
 
 export const getServerSideProps: GetServerSideProps = async (ctx) => {
-  const { location_id, tier, billing, phone } = ctx.query;
+  const { location_id, tier, billing, phone, return_to } = ctx.query;
 
   if (!location_id || !tier || (tier !== 'pro' && tier !== 'business')) {
     return { notFound: true };
@@ -363,6 +364,7 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
       initialBilling: billing === 'annual' ? 'annual' : 'monthly',
       locationName: location.name,
       prefillPhone: typeof phone === 'string' ? phone : '',
+      returnTo: typeof return_to === 'string' ? return_to : '',
     },
   };
 };

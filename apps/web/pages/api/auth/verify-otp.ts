@@ -6,7 +6,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'POST') return res.status(405).end();
 
   try {
-  const { phone, token, location_id, tier, billing } = req.body;
+  const { phone, token, location_id, tier, billing, return_to } = req.body;
 
   if (!phone || !token) return res.status(400).json({ error: 'Missing fields' });
 
@@ -86,7 +86,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       mode: 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
       subscription_data: trialEnd ? { trial_end: trialEnd } : undefined,
-      success_url: `${appUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${appUrl}/success?session_id={CHECKOUT_SESSION_ID}${return_to ? `&return_to=${encodeURIComponent(return_to)}` : ''}`,
       cancel_url: `${appUrl}/upgrade?location_id=${location_id}&tier=${tier}&billing=${billingType}`,
       metadata: { location_id, tier, billing: billingType },
     });

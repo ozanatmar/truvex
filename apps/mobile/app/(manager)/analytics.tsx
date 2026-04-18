@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
+import * as ExpoLinking from 'expo-linking';
 import { useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../lib/store';
@@ -144,7 +145,8 @@ export default function AnalyticsScreen() {
             style={styles.gateButton}
             onPress={async () => {
               const phone = profile?.phone ?? '';
-              const url = `${WEB_URL}/upgrade?location_id=${activeLocation?.id}&tier=business&phone=${encodeURIComponent(phone)}`;
+              const returnTo = ExpoLinking.createURL('/upgrade-success');
+              const url = `${WEB_URL}/upgrade?location_id=${activeLocation?.id}&tier=business&phone=${encodeURIComponent(phone)}&return_to=${encodeURIComponent(returnTo)}`;
               await WebBrowser.openBrowserAsync(url, {
                 toolbarColor: '#0f0f1a',
                 controlsColor: '#F5853F',

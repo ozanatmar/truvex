@@ -10,6 +10,7 @@ import {
   Linking,
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
+import * as ExpoLinking from 'expo-linking';
 import { useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../lib/store';
@@ -87,7 +88,7 @@ export default function ManagerSettingsScreen() {
   // Listen for deep link after web subscription actions
   useEffect(() => {
     const sub = Linking.addEventListener('url', ({ url }) => {
-      if (url === 'truvex://upgrade-success' || url === 'truvex://subscription-updated') {
+      if (url.includes('upgrade-success') || url.includes('subscription-updated')) {
         refresh();
       }
     });
@@ -96,7 +97,10 @@ export default function ManagerSettingsScreen() {
 
   async function handleUpgrade(tier: 'pro' | 'business') {
     const phone = profile?.phone ?? '';
-    const url = `${WEB_URL}/upgrade?location_id=${location?.id}&tier=${tier}&phone=${encodeURIComponent(phone)}`;
+    // Expo Go registers an exp:// scheme; standalone/dev-client uses truvex://.
+    // ExpoLinking.createURL picks the right one for the current runtime.
+    const returnTo = ExpoLinking.createURL('/upgrade-success');
+    const url = `${WEB_URL}/upgrade?location_id=${location?.id}&tier=${tier}&phone=${encodeURIComponent(phone)}&return_to=${encodeURIComponent(returnTo)}`;
     await WebBrowser.openBrowserAsync(url, {
       toolbarColor: '#0f0f1a',
       controlsColor: '#F5853F',

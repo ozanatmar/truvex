@@ -45,15 +45,20 @@ async function processCalloutNotification(callout: CalloutRecord) {
   // Get location to check subscription tier
   const { data: location } = await supabase
     .from('truvex.locations')
-    .select('subscription_tier, name')
+    .select('subscription_tier, subscription_status, trial_ends_at, name')
     .eq('id', callout.location_id)
     .single();
 
   if (!location) return;
 
-  // Free tier: no push/SMS
-  if (location.subscription_tier === 'free') {
-    console.log(`Location ${callout.location_id} is on free tier — skipping notifications`);
+  // Pro features gate: paid pro/business OR active trial. Free-without-trial skips.
+  const isPaid = location.subscription_tier === 'pro' || location.subscription_tier === 'business';
+  const trialActive = location.subscription_status === 'trialing'
+    && location.trial_ends_at
+    && new Date(location.trial_ends_at).getTime() > Date.now();
+
+  if (!isPaid && !trialActive) {
+    console.log(`Location ${callout.location_id} has no Pro features — skipping notifications`);
     return;
   }
 

@@ -1,6 +1,6 @@
 # Truvex — Project Reference
 
-Last updated: 2026-04-17
+Last updated: 2026-04-18
 
 ---
 
@@ -59,7 +59,7 @@ Truvex is a React Native (Expo) mobile app for restaurant shift callout manageme
 | `STRIPE_BUSINESS_PRICE_ID` | Stripe price ID for $99/mo Business plan (monthly) |
 | `STRIPE_BUSINESS_ANNUAL_PRICE_ID` | Stripe price ID for $79/mo Business plan (billed $948/yr) |
 | `NEXT_PUBLIC_APP_URL` | Web app base URL (e.g. `https://truvex.app`) |
-| `TWILIO_ACCOUNT_SID` | Twilio account SID |
+| `TWILIO_ACCOUNT_SID` | Twilio account SID — also used by `/api/auth/check-phone` + `/api/auth/send-otp` for Twilio Lookup (VoIP filter) |
 | `TWILIO_AUTH_TOKEN` | Twilio auth token |
 | `TWILIO_PHONE_NUMBER` | Twilio sending number |
 | `IS_LAUNCHED` | Launch gate. `"true"` serves the live marketing site; anything else (unset/empty/`"false"`) redirects all marketing surfaces to `/pre-launch`. |
@@ -75,6 +75,8 @@ Truvex is a React Native (Expo) mobile app for restaurant shift callout manageme
 | `TWILIO_PHONE_NUMBER` | Twilio sending number |
 | `EXPO_ACCESS_TOKEN` | Expo push notification access token |
 | `SUPPORT_OWNER_PHONE` | Owner's phone number to receive support SMS (notify-support function) |
+| `STRIPE_SECRET_KEY` | Used by `delete-location` to cancel active Stripe subscriptions when a restaurant is deleted |
+| `TRIAL_DURATION_SECONDS` | Length of the one-time Pro trial per phone. Defaults to 14 days (`1209600`). Set to `840` on dev/preview for 14-minute trials to exercise the expiry flow. |
 
 ---
 
@@ -84,7 +86,7 @@ All tables live in the `truvex` schema. See `supabase/migrations/001_truvex_sche
 
 | Table | Purpose |
 |---|---|
-| `truvex.profiles` | User profiles (linked to `auth.users`). Includes `expo_push_token`. |
+| `truvex.profiles` | User profiles (linked to `auth.users`). Includes `expo_push_token` and `trial_used_at` (one-time Pro trial gate — once set, future locations for this phone are Free/active with no trial). |
 | `truvex.locations` | Restaurants/businesses. Tracks `subscription_tier`, Stripe IDs. |
 | `truvex.location_members` | User ↔ location link. `member_type` = manager/worker, `status` = pending/active, `is_muted`. |
 | `truvex.roles` | Roles per location (Cook, Server, etc.). Configurable. |
@@ -144,12 +146,28 @@ All tables live in the `truvex` schema. See `supabase/migrations/001_truvex_sche
 
 ## Billing Flow
 
-1. Manager taps Upgrade → app opens browser to `https://truvex.app/upgrade?location_id=...&tier=...`
-2. Web page prompts phone OTP (same Supabase account)
-3. On verify: creates Stripe Checkout session → redirects to Stripe
-4. On payment: Stripe webhook hits `/api/webhooks/stripe` → updates `locations.subscription_tier`
+### Trial model
+- Trial is **one-time per phone account**, gated by `truvex.profiles.trial_used_at`.
+- The first location created by a phone starts as `subscription_tier='free'`, `subscription_status='trialing'`, with `trial_ends_at = now() + TRIAL_DURATION_SECONDS` (default 14 days, 14 minutes on dev/preview).
+- During the trial the tier stays `free` but `hasProFeatures()` returns true — push + SMS are enabled, worker limit lifts to Pro (30).
+- Additional locations on the same phone: always `free`/`active`, no trial.
+- `expire-trials` Edge Function runs every minute via `pg_cron` — flips `trialing` locations past `trial_ends_at` with no `stripe_subscription_id` to `subscription_status='expired'`. Tier stays `free`.
+
+### Checkout
+1. Manager taps Upgrade → app opens browser to `https://truvex.app/upgrade?location_id=...&tier=...&phone=...`
+2. Web page prefills phone and auto-sends OTP (same Supabase account)
+3. On verify: creates Stripe Checkout session → redirects to Stripe. If the location still has ≥48h of trial remaining, it's carried over via `subscription_data.trial_end`; shorter windows bill immediately (Stripe requires ≥48h for `trial_end`).
+4. On payment: Stripe webhook hits `/api/webhooks/stripe` → updates `locations.subscription_tier` + status + `stripe_subscription_id`.
 5. Stripe success_url → `/success` → redirects to `truvex://upgrade-success`
 6. App deep link handler re-fetches location data
+
+### Deleting a restaurant
+- Manager → Settings → "Delete this restaurant" (destructive confirm) → calls `delete-location` Edge Function.
+- Function cancels any active Stripe subscription immediately, then deletes the location. FK cascades wipe roles, worker_roles, location_members, callouts, callout_responses, notification_log, shift_presets, and support_tickets.
+- `profiles` and `auth.users` are never touched. A deleted location does not delete any manager or worker account.
+
+### Abuse prevention
+- `/api/auth/check-phone` and `/api/auth/send-otp` call Twilio Lookup v2 `line_type_intelligence` for phones with no existing profile. VoIP / non-fixed VoIP / voicemail / pager numbers are rejected before an OTP is sent. Returning users skip the Lookup to avoid the per-call charge.
 
 ---
 

@@ -20,14 +20,14 @@ const PLAN_INFO = {
     monthly: '$49/mo',
     annual: '$39/mo',
     annualNote: 'billed $468/yr',
-    features: ['Up to 30 workers', 'Push + SMS notifications', '14-day free trial'],
+    features: ['Up to 30 workers', 'Push + SMS notifications'],
   },
   business: {
     name: 'Business',
     monthly: '$99/mo',
     annual: '$79/mo',
     annualNote: 'billed $948/yr',
-    features: ['Unlimited workers', 'Push + SMS notifications', 'Analytics dashboard', '14-day free trial'],
+    features: ['Unlimited workers', 'Push + SMS notifications', 'Analytics dashboard'],
   },
 };
 

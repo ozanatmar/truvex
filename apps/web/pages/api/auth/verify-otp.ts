@@ -54,12 +54,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .eq('id', location_id);
     }
 
-    // Carry over any remaining trial days
+    // Carry over any remaining trial days. Stripe requires `trial_end` to be at
+    // least 48h in the future when passed on a Checkout Session; under that, omit
+    // it and let the sub bill immediately. Keeps the short-trial dev flow working.
+    const MIN_TRIAL_END_MS_AHEAD = 48 * 60 * 60 * 1000;
     let trialEnd: number | undefined;
     if (location.subscription_status === 'trialing' && location.trial_ends_at) {
       const trialEndsAt = new Date(location.trial_ends_at).getTime();
       const remainingMs = trialEndsAt - Date.now();
-      if (remainingMs > 0) {
+      if (remainingMs >= MIN_TRIAL_END_MS_AHEAD) {
         trialEnd = Math.floor(trialEndsAt / 1000);
       }
     }

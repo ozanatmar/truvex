@@ -7,6 +7,7 @@ const corsHeaders = {
 };
 
 const DEFAULT_ROLES = ['Cook', 'Server', 'Bartender', 'Host', 'Cashier', 'Dishwasher', 'Manager'];
+const DEFAULT_TRIAL_SECONDS = 14 * 24 * 60 * 60;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -19,7 +20,6 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // Verify the caller is authenticated
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -45,27 +45,26 @@ serve(async (req) => {
       });
     }
 
-    // Gate additional locations behind a paid tier on the first location
-    const { data: userLocations } = await supabase
+    // One-time Pro trial per phone account. trial_used_at on the profile is the
+    // gate — not the number of locations, not a flag on the location row.
+    const { data: profile } = await supabase
       .schema('truvex')
-      .from('locations')
-      .select('subscription_tier')
-      .eq('manager_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1);
+      .from('profiles')
+      .select('trial_used_at')
+      .eq('id', user.id)
+      .single();
 
-    if (userLocations && userLocations.length > 0) {
-      const existing = userLocations[0];
-      if (!existing || existing.subscription_tier === 'free') {
-        return new Response(
-          JSON.stringify({ error: 'Upgrade your current location to Pro or Business before adding more locations.' }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-        );
-      }
-    }
+    const trialEligible = !profile?.trial_used_at;
+    const trialSecondsRaw = Number(Deno.env.get('TRIAL_DURATION_SECONDS') ?? '');
+    const trialSeconds = Number.isFinite(trialSecondsRaw) && trialSecondsRaw > 0
+      ? trialSecondsRaw
+      : DEFAULT_TRIAL_SECONDS;
 
-    // Create the location
-    const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+    const now = new Date();
+    const trialEndsAt = trialEligible
+      ? new Date(now.getTime() + trialSeconds * 1000).toISOString()
+      : null;
+
     const { data: location, error: locationError } = await supabase
       .schema('truvex')
       .from('locations')
@@ -74,7 +73,7 @@ serve(async (req) => {
         industry_type,
         manager_id: user.id,
         subscription_tier: 'free',
-        subscription_status: 'trialing',
+        subscription_status: trialEligible ? 'trialing' : 'active',
         trial_ends_at: trialEndsAt,
       })
       .select()
@@ -87,7 +86,15 @@ serve(async (req) => {
       });
     }
 
-    // Insert default roles
+    // Burn the trial for this phone account.
+    if (trialEligible) {
+      await supabase
+        .schema('truvex')
+        .from('profiles')
+        .update({ trial_used_at: now.toISOString() })
+        .eq('id', user.id);
+    }
+
     const roleRows = DEFAULT_ROLES.map((roleName) => ({
       location_id: location.id,
       name: roleName,

@@ -13,6 +13,8 @@ import {
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 
+const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL ?? 'https://truvex.app';
+
 function formatUSPhone(raw: string): string {
   const digits = raw.replace(/\D/g, '');
   if (digits.length <= 3) return digits;
@@ -33,6 +35,25 @@ export default function PhoneScreen() {
     setLoading(true);
 
     const e164 = `+1${digits}`;
+
+    try {
+      const checkRes = await fetch(`${WEB_URL}/api/auth/check-phone`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: e164 }),
+      });
+      if (!checkRes.ok) {
+        const body = await checkRes.json().catch(() => ({ error: 'Could not verify phone number' }));
+        setLoading(false);
+        Alert.alert('Error', body.error ?? 'Could not verify phone number');
+        return;
+      }
+    } catch {
+      // Network error contacting check-phone — fail open so a broken web layer
+      // doesn't lock existing users out. Supabase signInWithOtp below will
+      // still enforce rate limits.
+    }
+
     const { error } = await supabase.auth.signInWithOtp({ phone: e164 });
 
     setLoading(false);

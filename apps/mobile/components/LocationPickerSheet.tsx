@@ -5,14 +5,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert,
-  Linking,
 } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
 import { Location } from '../types/database';
-import { useStore } from '../lib/store';
-
-const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL ?? 'https://truvex-web.vercel.app';
 
 interface Props {
   visible: boolean;
@@ -31,32 +25,7 @@ export default function LocationPickerSheet({
   onClose,
   onAddLocation,
 }: Props) {
-  const { activeLocation, profile } = useStore();
-  const isEligibleForMultiLocation = activeLocation?.subscription_tier !== 'free';
-
-  async function handleAddLocationPress() {
-    if (!isEligibleForMultiLocation) {
-      const phone = profile?.phone ?? '';
-      Alert.alert(
-        'Paid plan required',
-        'Upgrade your current location to Pro or Business to add more locations.',
-        [
-          { text: 'Not now', style: 'cancel' },
-          {
-            text: 'Upgrade',
-            onPress: async () => {
-              const url = `${WEB_URL}/upgrade?location_id=${activeLocation?.id}&tier=pro&phone=${encodeURIComponent(phone)}`;
-              await WebBrowser.openBrowserAsync(url, {
-                toolbarColor: '#0f0f1a',
-                controlsColor: '#F5853F',
-                presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
-              });
-            },
-          },
-        ],
-      );
-      return;
-    }
+  function handleAddLocationPress() {
     onAddLocation();
   }
 
@@ -101,11 +70,7 @@ export default function LocationPickerSheet({
 
         <View style={styles.footer}>
           <TouchableOpacity style={styles.addButton} onPress={handleAddLocationPress}>
-            <Text style={styles.addButtonText}>
-              {isEligibleForMultiLocation
-                ? '+ Add another location'
-                : '+ Add Location  (Pro or Business)'}
-            </Text>
+            <Text style={styles.addButtonText}>+ Add another location</Text>
           </TouchableOpacity>
         </View>
       </View>

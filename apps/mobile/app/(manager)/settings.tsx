@@ -15,6 +15,7 @@ import { supabase } from '../../lib/supabase';
 import { useStore } from '../../lib/store';
 import { Location } from '../../types/database';
 import TutorialModal from '../../components/TutorialModal';
+import { useRouter } from 'expo-router';
 
 const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL ?? 'https://truvex.app';
 
@@ -30,9 +31,20 @@ function formatDate(dateStr: string | null): string {
 }
 
 export default function ManagerSettingsScreen() {
-  const { session, profile, activeLocation, setActiveLocation, reset } = useStore();
+  const router = useRouter();
+  const {
+    session,
+    profile,
+    activeLocation,
+    allLocations,
+    setActiveLocation,
+    setAllLocations,
+    setMemberType,
+    reset,
+  } = useStore();
   const [location, setLocation] = useState<Location | null>(activeLocation);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!activeLocation) return;
@@ -97,6 +109,43 @@ export default function ManagerSettingsScreen() {
     reset();
   }
 
+  function handleDeleteRestaurant() {
+    if (!location) return;
+    Alert.alert(
+      `Delete ${location.name}?`,
+      'This cancels the subscription and removes all workers, roles, callouts, and history for this restaurant. Your account stays active. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            if (!session) return;
+            setDeleting(true);
+            const { error } = await supabase.functions.invoke('delete-location', {
+              body: { location_id: location.id },
+            });
+            setDeleting(false);
+            if (error) {
+              Alert.alert('Error', error.message ?? 'Failed to delete restaurant');
+              return;
+            }
+            const remaining = allLocations.filter((l) => l.id !== location.id);
+            setAllLocations(remaining);
+            if (remaining.length > 0) {
+              setActiveLocation(remaining[0]);
+              router.replace('/(manager)/');
+            } else {
+              setActiveLocation(null);
+              setMemberType(null);
+              router.replace('/no-location');
+            }
+          },
+        },
+      ],
+    );
+  }
+
   const loc = location as any;
   const status: string = loc?.subscription_status ?? 'trialing';
   const tier: string = loc?.subscription_tier ?? 'free';
@@ -119,6 +168,13 @@ export default function ManagerSettingsScreen() {
         <View style={styles.card}>
           <Row label="Name" value={loc?.name ?? '—'} />
         </View>
+        <TouchableOpacity onPress={handleDeleteRestaurant} disabled={deleting}>
+          {deleting ? (
+            <ActivityIndicator color="#ef4444" style={{ paddingVertical: 8 }} />
+          ) : (
+            <Text style={styles.deleteRestaurantText}>Delete this restaurant</Text>
+          )}
+        </TouchableOpacity>
       </View>
 
       {/* Subscription */}
@@ -142,12 +198,12 @@ export default function ManagerSettingsScreen() {
               <View style={styles.trialNotice}>
                 {trialDays > 0 ? (
                   <Text style={styles.trialText}>
-                    {trialDays} day{trialDays !== 1 ? 's' : ''} left in your trial.
-                    Add a payment method to keep push & SMS after it ends.
+                    Pro features are active for {trialDays} more day{trialDays !== 1 ? 's' : ''}.
+                    Subscribe before the trial ends to keep push & SMS notifications.
                   </Text>
                 ) : (
                   <Text style={[styles.trialText, { color: '#ef4444' }]}>
-                    Your trial has ended. Upgrade to restore notifications.
+                    Your Pro trial has ended. Subscribe to restore notifications.
                   </Text>
                 )}
               </View>
@@ -193,14 +249,13 @@ export default function ManagerSettingsScreen() {
               <Text style={styles.upgradePrice}>$49 / mo</Text>
               <Text style={styles.upgradeFeature}>Up to 30 workers</Text>
               <Text style={styles.upgradeFeature}>Push + SMS notifications</Text>
-              <Text style={styles.upgradeFeature}>14-day free trial</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.upgradeCard, styles.upgradeCardPro]} onPress={() => handleUpgrade('business')}>
               <Text style={styles.upgradePlan}>Business</Text>
               <Text style={styles.upgradePrice}>$99 / mo</Text>
               <Text style={styles.upgradeFeature}>Unlimited workers</Text>
               <Text style={styles.upgradeFeature}>Push + SMS notifications</Text>
-              <Text style={styles.upgradeFeature}>14-day free trial</Text>
+              <Text style={styles.upgradeFeature}>Analytics dashboard</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -313,6 +368,7 @@ const styles = StyleSheet.create({
   },
   actionButtonText: { color: '#0E7C7B', fontSize: 15, fontWeight: '700' },
   cancelSubText: { color: '#ef4444', fontSize: 13, textAlign: 'center', paddingVertical: 8 },
+  deleteRestaurantText: { color: '#ef4444', fontSize: 13, textAlign: 'center', paddingVertical: 8 },
   signOutButton: { margin: 20, alignItems: 'center', paddingVertical: 14 },
   signOutText: { color: '#ef4444', fontSize: 15, fontWeight: '600' },
   chevron: { fontSize: 20, color: '#555' },

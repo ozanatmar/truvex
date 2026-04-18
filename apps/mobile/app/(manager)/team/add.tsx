@@ -16,6 +16,7 @@ import * as Contacts from 'expo-contacts';
 import { supabase } from '../../../lib/supabase';
 import { useStore } from '../../../lib/store';
 import { Role } from '../../../types/database';
+import { workerLimit, effectiveTier } from '../../../lib/subscription';
 
 function formatUSPhone(raw: string): string {
   const digits = raw.replace(/\D/g, '');
@@ -23,12 +24,6 @@ function formatUSPhone(raw: string): string {
   if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
 }
-
-const WORKER_LIMITS: Record<string, number | null> = {
-  free: 10,
-  pro: 30,
-  business: null,
-};
 
 export default function AddWorkerScreen() {
   const router = useRouter();
@@ -44,8 +39,8 @@ export default function AddWorkerScreen() {
   const digits = phone.replace(/\D/g, '');
   const isValid = name.trim().length > 0 && digits.length === 10 && primaryRoleId !== '';
 
-  const tier = (activeLocation as any)?.subscription_tier ?? 'free';
-  const limit = WORKER_LIMITS[tier] ?? 10;
+  const tier = effectiveTier(activeLocation);
+  const limit = workerLimit(activeLocation);
   const atLimit = limit !== null && workerCount >= limit;
 
   useEffect(() => {

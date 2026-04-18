@@ -72,7 +72,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    const rawAppUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://truvex.app';
+    // Prefer the request's own origin so dev/preview deployments stay on
+    // their own domain through Stripe Checkout. Fall back to the env var
+    // (then the canonical prod URL) only if the host header is missing.
+    const host = req.headers['x-forwarded-host'] ?? req.headers.host;
+    const proto = (req.headers['x-forwarded-proto'] as string) ?? 'https';
+    const originFromReq = host ? `${proto}://${host}` : null;
+    const rawAppUrl = originFromReq ?? process.env.NEXT_PUBLIC_APP_URL ?? 'https://truvex.app';
     const appUrl = /^https?:\/\//i.test(rawAppUrl) ? rawAppUrl : `https://${rawAppUrl}`;
 
     const session = await stripe.checkout.sessions.create({

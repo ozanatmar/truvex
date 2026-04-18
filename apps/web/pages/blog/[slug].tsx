@@ -26,6 +26,27 @@ const APP_STRIP_HTML = `
 </div>
 `;
 
+function stripHtmlToText(html: string): string {
+  return html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function deriveDescription(post: Pick<BlogPost, 'description' | 'body_html' | 'title'>): string {
+  if (post.description && post.description.trim().length > 0) return post.description;
+  const text = stripHtmlToText(post.body_html);
+  if (text.length === 0) return post.title;
+  if (text.length <= 155) return text;
+  return text.slice(0, 152).replace(/\s+\S*$/, '') + '...';
+}
+
 function injectAppStrip(html: string, stripHtml: string): string {
   // Try to insert after the last <h2>...</h2> block
   const h2Regex = /(<\/h2>)/gi;
@@ -71,44 +92,73 @@ export default function BlogPostPage({ post }: Props) {
   });
 
   const enrichedHtml = injectAppStrip(post.body_html, APP_STRIP_HTML);
+  const url = `https://truvex.app/blog/${post.slug}`;
+  const description = deriveDescription(post);
+  const ogImage = post.hero_image_url ?? 'https://truvex.app/og-image.jpg';
+  const publishedIso = new Date(post.published_at).toISOString();
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'BlogPosting',
+        '@id': `${url}#article`,
+        headline: post.title,
+        description,
+        image: [ogImage],
+        datePublished: publishedIso,
+        dateModified: publishedIso,
+        inLanguage: 'en-US',
+        mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+        author: { '@type': 'Organization', name: 'Truvex', url: 'https://truvex.app' },
+        publisher: {
+          '@type': 'Organization',
+          name: 'Truvex',
+          url: 'https://truvex.app',
+          logo: {
+            '@type': 'ImageObject',
+            url: 'https://truvex.app/icon-512.png',
+            width: 512,
+            height: 512,
+          },
+        },
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://truvex.app/' },
+          { '@type': 'ListItem', position: 2, name: 'Blog', item: 'https://truvex.app/blog' },
+          { '@type': 'ListItem', position: 3, name: post.title, item: url },
+        ],
+      },
+    ],
+  };
 
   return (
     <>
       <Head>
         <title>{post.title} — Truvex Blog</title>
-        <meta
-          name="description"
-          content={post.description ?? `${post.title} — Truvex Blog`}
-        />
+        <meta name="description" content={description} />
         <meta property="og:title" content={post.title} />
-        <meta
-          property="og:description"
-          content={post.description ?? post.title}
-        />
+        <meta property="og:description" content={description} />
         <meta property="og:type" content="article" />
-        <meta
-          property="og:url"
-          content={`https://truvex.app/blog/${post.slug}`}
-        />
+        <meta property="og:url" content={url} />
         <meta property="og:site_name" content="Truvex" />
-        {post.hero_image_url && (
-          <>
-            <meta property="og:image" content={post.hero_image_url} />
-            <meta property="og:image:width" content="1536" />
-            <meta property="og:image:height" content="1024" />
-          </>
-        )}
-        <meta
-          name="twitter:card"
-          content={post.hero_image_url ? 'summary_large_image' : 'summary'}
-        />
+        <meta property="og:image" content={ogImage} />
+        <meta property="og:image:width" content={post.hero_image_url ? '1536' : '1200'} />
+        <meta property="og:image:height" content={post.hero_image_url ? '1024' : '630'} />
+        <meta property="article:published_time" content={publishedIso} />
+        <meta property="article:modified_time" content={publishedIso} />
+        <meta property="article:author" content="Truvex" />
+        <meta property="article:publisher" content="https://truvex.app" />
+        <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={post.title} />
-        {post.hero_image_url && (
-          <meta name="twitter:image" content={post.hero_image_url} />
-        )}
-        <link
-          rel="canonical"
-          href={`https://truvex.app/blog/${post.slug}`}
+        <meta name="twitter:description" content={description} />
+        <meta name="twitter:image" content={ogImage} />
+        <link rel="canonical" href={url} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </Head>
 

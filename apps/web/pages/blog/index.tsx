@@ -18,15 +18,71 @@ interface PostSummary {
 }
 
 export default function BlogIndex({ posts }: { posts: PostSummary[] }) {
+  const description =
+    'Practical advice for restaurant and hospitality managers on shift coverage, scheduling, and team management.';
+  const url = 'https://truvex.app/blog';
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Blog',
+        '@id': `${url}#blog`,
+        name: 'Truvex Blog',
+        description,
+        url,
+        inLanguage: 'en-US',
+        publisher: {
+          '@type': 'Organization',
+          name: 'Truvex',
+          url: 'https://truvex.app',
+          logo: {
+            '@type': 'ImageObject',
+            url: 'https://truvex.app/icon-512.png',
+            width: 512,
+            height: 512,
+          },
+        },
+        blogPost: posts.slice(0, 20).map((p) => ({
+          '@type': 'BlogPosting',
+          headline: p.title,
+          description: p.description ?? p.title,
+          url: `https://truvex.app/blog/${p.slug}`,
+          datePublished: new Date(p.published_at).toISOString(),
+          ...(p.hero_image_url ? { image: [p.hero_image_url] } : {}),
+        })),
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://truvex.app/' },
+          { '@type': 'ListItem', position: 2, name: 'Blog', item: url },
+        ],
+      },
+    ],
+  };
+
   return (
     <>
       <Head>
         <title>Blog — Truvex</title>
-        <meta
-          name="description"
-          content="Practical advice for restaurant and hospitality managers on shift coverage, scheduling, and team management."
+        <meta name="description" content={description} />
+        <meta property="og:title" content="Truvex Blog" />
+        <meta property="og:description" content={description} />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={url} />
+        <meta property="og:site_name" content="Truvex" />
+        <meta property="og:image" content="https://truvex.app/og-image.jpg" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Truvex Blog" />
+        <meta name="twitter:description" content={description} />
+        <meta name="twitter:image" content="https://truvex.app/og-image.jpg" />
+        <link rel="canonical" href={url} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        <link rel="canonical" href="https://truvex.app/blog" />
       </Head>
 
       <BlogLayout>

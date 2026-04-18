@@ -50,6 +50,12 @@ export function middleware(request: NextRequest) {
       return NextResponse.next();
     }
 
+    // Crawler discovery files must stay reachable pre-launch so blog posts
+    // actually get indexed. /sitemap.xml only lists blog URLs while gated.
+    if (pathname === '/sitemap.xml' || pathname === '/robots.txt') {
+      return NextResponse.next();
+    }
+
     // About paths redirect to the pre-launch About clone, not the waitlist
     // landing, so visitors following About links land on founder copy.
     if (pathname === '/about' || pathname === '/about.html') {

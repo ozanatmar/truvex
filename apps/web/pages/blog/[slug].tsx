@@ -3,6 +3,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
 import BlogLayout from '../../components/BlogLayout';
+import { optimizedImageUrl } from '../../lib/image';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -70,6 +71,52 @@ function injectAppStrip(html: string, stripHtml: string): string {
   return html + stripHtml;
 }
 
+function slugifyHeading(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/<[^>]+>/g, '')
+    .replace(/&[a-z]+;/gi, ' ')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 60) || 'section';
+}
+
+// Walks every <h2>...</h2>, adds an id attribute (slug of the heading text),
+// and returns both the rewritten html and a list of {id, text} entries for
+// the TOC. Existing ids on h2s are preserved. Ensures uniqueness by
+// suffixing -2, -3, etc. when the same slug appears twice.
+function injectH2IdsAndCollect(html: string): { html: string; toc: Array<{ id: string; text: string }> } {
+  const seen = new Map<string, number>();
+  const toc: Array<{ id: string; text: string }> = [];
+  const h2Re = /<h2([^>]*)>([\s\S]*?)<\/h2>/gi;
+  const rewritten = html.replace(h2Re, (_match, attrs, inner) => {
+    const textOnly = String(inner).replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+    const existingIdMatch = String(attrs).match(/\sid\s*=\s*"([^"]+)"/i);
+    let id: string;
+    if (existingIdMatch) {
+      id = existingIdMatch[1];
+    } else {
+      const base = slugifyHeading(textOnly);
+      const n = seen.get(base) ?? 0;
+      id = n === 0 ? base : `${base}-${n + 1}`;
+      seen.set(base, n + 1);
+    }
+    toc.push({ id, text: textOnly });
+    const newAttrs = existingIdMatch ? attrs : ` id="${id}"${attrs}`;
+    return `<h2${newAttrs}>${inner}</h2>`;
+  });
+  return { html: rewritten, toc };
+}
+
+function truncateTitle(title: string, max: number): string {
+  if (title.length <= max) return title;
+  const cut = title.slice(0, max - 1);
+  const lastSpace = cut.lastIndexOf(' ');
+  return (lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd() + '\u2026';
+}
+
 interface BlogPost {
   id: string;
   title: string;
@@ -77,7 +124,11 @@ interface BlogPost {
   description: string | null;
   body_html: string;
   published_at: string;
+  updated_at: string | null;
   hero_image_url: string | null;
+  hero_image_alt: string | null;
+  schema_type: string | null;
+  schema_data: Record<string, unknown> | null;
 }
 
 interface Props {
@@ -91,11 +142,22 @@ export default function BlogPostPage({ post }: Props) {
     day: 'numeric',
   });
 
-  const enrichedHtml = injectAppStrip(post.body_html, APP_STRIP_HTML);
+  const { html: htmlWithIds, toc } = injectH2IdsAndCollect(post.body_html);
+  const enrichedHtml = injectAppStrip(htmlWithIds, APP_STRIP_HTML);
   const url = `https://truvex.app/blog/${post.slug}`;
   const description = deriveDescription(post);
-  const ogImage = post.hero_image_url ?? 'https://truvex.app/og-image.jpg';
+  const heroAlt = post.hero_image_alt && post.hero_image_alt.trim().length > 0
+    ? post.hero_image_alt
+    : post.title;
+  // Twitter + Facebook want roughly 1200x630. Hero is stored at 1536x1024 so
+  // resize on-the-fly via Supabase transforms and fall back to the static OG.
+  const ogImage = optimizedImageUrl(post.hero_image_url, { width: 1200, height: 630, resize: 'cover' })
+    ?? 'https://truvex.app/og-image.jpg';
   const publishedIso = new Date(post.published_at).toISOString();
+  const modifiedIso = post.updated_at
+    ? new Date(post.updated_at).toISOString()
+    : publishedIso;
+  const titleTag = `${truncateTitle(post.title, 55)} | Truvex`;
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -107,10 +169,14 @@ export default function BlogPostPage({ post }: Props) {
         description,
         image: [ogImage],
         datePublished: publishedIso,
-        dateModified: publishedIso,
+        dateModified: modifiedIso,
         inLanguage: 'en-US',
         mainEntityOfPage: { '@type': 'WebPage', '@id': url },
-        author: { '@type': 'Organization', name: 'Truvex', url: 'https://truvex.app' },
+        author: {
+          '@type': 'Person',
+          name: 'Ozan Atmar',
+          url: 'https://truvex.app/about',
+        },
         publisher: {
           '@type': 'Organization',
           name: 'Truvex',
@@ -134,10 +200,16 @@ export default function BlogPostPage({ post }: Props) {
     ],
   };
 
+  // Optional second JSON-LD block (HowTo, FAQPage, etc.) layered alongside
+  // the BlogPosting graph. The @context is added so the block is standalone.
+  const extraJsonLd = post.schema_type && post.schema_data
+    ? { '@context': 'https://schema.org', '@type': post.schema_type, ...post.schema_data }
+    : null;
+
   return (
     <>
       <Head>
-        <title>{post.title} — Truvex Blog</title>
+        <title>{titleTag}</title>
         <meta name="description" content={description} />
         <meta property="og:title" content={post.title} />
         <meta property="og:description" content={description} />
@@ -145,21 +217,29 @@ export default function BlogPostPage({ post }: Props) {
         <meta property="og:url" content={url} />
         <meta property="og:site_name" content="Truvex" />
         <meta property="og:image" content={ogImage} />
-        <meta property="og:image:width" content={post.hero_image_url ? '1536' : '1200'} />
-        <meta property="og:image:height" content={post.hero_image_url ? '1024' : '630'} />
+        <meta property="og:image:alt" content={heroAlt} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
         <meta property="article:published_time" content={publishedIso} />
-        <meta property="article:modified_time" content={publishedIso} />
-        <meta property="article:author" content="Truvex" />
+        <meta property="article:modified_time" content={modifiedIso} />
+        <meta property="article:author" content="Ozan Atmar" />
         <meta property="article:publisher" content="https://truvex.app" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={post.title} />
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={ogImage} />
+        <meta name="twitter:image:alt" content={heroAlt} />
         <link rel="canonical" href={url} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        {extraJsonLd && (
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(extraJsonLd) }}
+          />
+        )}
       </Head>
 
       <BlogLayout>
@@ -179,13 +259,28 @@ export default function BlogPostPage({ post }: Props) {
               <div style={styles.heroWrap}>
                 <img
                   src={post.hero_image_url}
-                  alt={post.title}
+                  alt={heroAlt}
                   style={styles.heroImg}
                   width={1536}
                   height={1024}
                   loading="eager"
                 />
               </div>
+            )}
+
+            {toc.length >= 3 && (
+              <nav aria-label="Table of contents" style={styles.toc}>
+                <p style={styles.tocLabel}>In this post</p>
+                <ol style={styles.tocList}>
+                  {toc.map((item) => (
+                    <li key={item.id} style={styles.tocItem}>
+                      <a href={`#${item.id}`} style={styles.tocLink}>
+                        {item.text}
+                      </a>
+                    </li>
+                  ))}
+                </ol>
+              </nav>
             )}
 
             <div
@@ -217,7 +312,9 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
   const { data, error } = await supabase
     .schema('truvex')
     .from('blog_posts')
-    .select('id, title, slug, description, body_html, published_at, hero_image_url')
+    .select(
+      'id, title, slug, description, body_html, published_at, updated_at, hero_image_url, hero_image_alt, schema_type, schema_data'
+    )
     .eq('slug', slug)
     .single();
 
@@ -287,6 +384,36 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 18,
     lineHeight: 1.8,
     color: '#2A2A3A',
+  },
+  toc: {
+    background: '#f7f7f9',
+    border: '1px solid #e8e8ec',
+    borderRadius: 14,
+    padding: '20px 24px',
+    marginBottom: 40,
+  },
+  tocLabel: {
+    fontFamily: "'DM Sans', sans-serif",
+    fontSize: 12,
+    fontWeight: 700,
+    color: '#4A4A5A',
+    margin: '0 0 10px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.08em',
+  },
+  tocList: {
+    margin: 0,
+    padding: '0 0 0 20px',
+    fontSize: 15,
+    lineHeight: 1.7,
+    color: '#1A1A2E',
+  },
+  tocItem: {
+    marginBottom: 2,
+  },
+  tocLink: {
+    color: '#0E7C7B',
+    textDecoration: 'none',
   },
   footer: {
     marginTop: 64,

@@ -133,7 +133,7 @@ export default function EditWorkerScreen() {
     }
 
     setSaving(false);
-    router.back();
+    router.replace('/(manager)/team');
   }
 
   if (loading) {

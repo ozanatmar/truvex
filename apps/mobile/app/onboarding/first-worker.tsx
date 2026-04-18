@@ -31,11 +31,19 @@ export default function FirstWorkerScreen() {
   const [phone, setPhone] = useState('');
   const [roles, setRoles] = useState<Role[]>([]);
   const [selectedRoleId, setSelectedRoleId] = useState<string>('');
+  const [additionalRoleIds, setAdditionalRoleIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingRoles, setLoadingRoles] = useState(false);
 
   const digits = phone.replace(/\D/g, '');
   const isValid = name.trim().length > 0 && digits.length === 10 && selectedRoleId !== '';
+
+  function toggleAdditionalRole(roleId: string) {
+    if (roleId === selectedRoleId) return;
+    setAdditionalRoleIds((prev) =>
+      prev.includes(roleId) ? prev.filter((id) => id !== roleId) : [...prev, roleId]
+    );
+  }
 
   useEffect(() => {
     if (!activeLocation) return;
@@ -92,6 +100,7 @@ export default function FirstWorkerScreen() {
           invited_by: session.user.id,
           invited_name: name.trim(),
           primary_role_id: selectedRoleId,
+          additional_role_ids: additionalRoleIds,
         });
 
       if (memberError) {
@@ -100,12 +109,16 @@ export default function FirstWorkerScreen() {
         return;
       }
 
-      await supabase.schema('truvex').from('worker_roles').upsert({
-        location_id: activeLocation.id,
-        user_id: existingProfile.id,
-        role_id: selectedRoleId,
-        is_primary: true,
-      });
+      const roleRows = [
+        { location_id: activeLocation.id, user_id: existingProfile.id, role_id: selectedRoleId, is_primary: true },
+        ...additionalRoleIds.map((rid) => ({
+          location_id: activeLocation.id,
+          user_id: existingProfile.id,
+          role_id: rid,
+          is_primary: false,
+        })),
+      ];
+      await supabase.schema('truvex').from('worker_roles').upsert(roleRows);
     } else {
       const { error: inviteError } = await supabase
         .schema('truvex').from('location_members')
@@ -115,6 +128,7 @@ export default function FirstWorkerScreen() {
           invited_phone: e164,
           invited_name: name.trim(),
           primary_role_id: selectedRoleId,
+          additional_role_ids: additionalRoleIds,
           member_type: 'worker',
           status: 'pending',
           invited_by: session.user.id,
@@ -183,12 +197,15 @@ export default function FirstWorkerScreen() {
         {loadingRoles ? (
           <ActivityIndicator color="#0E7C7B" />
         ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.roleScroll}>
+          <View style={styles.roleGrid}>
             {roles.map((role) => (
               <TouchableOpacity
                 key={role.id}
                 style={[styles.roleChip, selectedRoleId === role.id && styles.roleChipSelected]}
-                onPress={() => setSelectedRoleId(role.id)}
+                onPress={() => {
+                  setSelectedRoleId(role.id);
+                  setAdditionalRoleIds((prev) => prev.filter((id) => id !== role.id));
+                }}
               >
                 <Text
                   style={[
@@ -200,7 +217,36 @@ export default function FirstWorkerScreen() {
                 </Text>
               </TouchableOpacity>
             ))}
-          </ScrollView>
+          </View>
+        )}
+
+        {!loadingRoles && roles.length > 1 && selectedRoleId !== '' && (
+          <>
+            <Text style={styles.label}>Additional Roles (optional)</Text>
+            <View style={styles.roleGrid}>
+              {roles
+                .filter((r) => r.id !== selectedRoleId)
+                .map((role) => (
+                  <TouchableOpacity
+                    key={role.id}
+                    style={[
+                      styles.roleChip,
+                      additionalRoleIds.includes(role.id) && styles.additionalChip,
+                    ]}
+                    onPress={() => toggleAdditionalRole(role.id)}
+                  >
+                    <Text
+                      style={[
+                        styles.roleChipText,
+                        additionalRoleIds.includes(role.id) && styles.additionalChipText,
+                      ]}
+                    >
+                      {role.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+            </View>
+          </>
         )}
 
         <TouchableOpacity
@@ -312,7 +358,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
   },
-  roleScroll: {
+  roleGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
     marginBottom: 8,
   },
   roleChip: {
@@ -321,10 +370,13 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    marginRight: 8,
   },
   roleChipSelected: {
     backgroundColor: '#0E7C7B',
+    borderColor: '#0E7C7B',
+  },
+  additionalChip: {
+    backgroundColor: 'rgba(14,124,123,0.15)',
     borderColor: '#0E7C7B',
   },
   roleChipText: {
@@ -334,6 +386,9 @@ const styles = StyleSheet.create({
   },
   roleChipTextSelected: {
     color: '#fff',
+  },
+  additionalChipText: {
+    color: '#7ECACA',
   },
   button: {
     backgroundColor: '#0E7C7B',

@@ -19,15 +19,38 @@ import { useRouter } from 'expo-router';
 
 const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL ?? 'https://truvex.app';
 
-function daysUntil(dateStr: string | null): number | null {
+function msUntil(dateStr: string | null): number | null {
   if (!dateStr) return null;
-  const diff = new Date(dateStr).getTime() - Date.now();
-  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  return Math.max(0, new Date(dateStr).getTime() - Date.now());
+}
+
+function formatTrialRemaining(dateStr: string | null): string | null {
+  const ms = msUntil(dateStr);
+  if (ms === null) return null;
+  if (ms === 0) return 'ended';
+  const totalMinutes = Math.ceil(ms / (1000 * 60));
+  if (totalMinutes < 60) {
+    return `${totalMinutes} more minute${totalMinutes !== 1 ? 's' : ''}`;
+  }
+  const totalHours = Math.ceil(ms / (1000 * 60 * 60));
+  if (totalHours < 24) {
+    return `${totalHours} more hour${totalHours !== 1 ? 's' : ''}`;
+  }
+  const totalDays = Math.ceil(ms / (1000 * 60 * 60 * 24));
+  return `${totalDays} more day${totalDays !== 1 ? 's' : ''}`;
 }
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '—';
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  const d = new Date(dateStr);
+  const msLeft = d.getTime() - Date.now();
+  // For short trials (<24h), include the time; otherwise date only.
+  if (msLeft > 0 && msLeft < 1000 * 60 * 60 * 24) {
+    return d.toLocaleString('en-US', {
+      month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+    });
+  }
+  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 }
 
 export default function ManagerSettingsScreen() {
@@ -150,7 +173,8 @@ export default function ManagerSettingsScreen() {
   const loc = location as any;
   const status: string = loc?.subscription_status ?? 'trialing';
   const tier: string = loc?.subscription_tier ?? 'free';
-  const trialDays = daysUntil(loc?.trial_ends_at);
+  const trialRemaining = formatTrialRemaining(loc?.trial_ends_at);
+  const trialEnded = trialRemaining === 'ended';
   const periodEnd = loc?.subscription_period_end;
 
   const planLabel = tier === 'business' ? 'Business' : tier === 'pro' ? 'Pro' : 'Free';
@@ -189,7 +213,7 @@ export default function ManagerSettingsScreen() {
             </View>
           </View>
 
-          {status === 'trialing' && trialDays !== null && (
+          {status === 'trialing' && trialRemaining !== null && (
             <>
               <Divider />
               <Row
@@ -197,9 +221,9 @@ export default function ManagerSettingsScreen() {
                 value={formatDate(loc?.trial_ends_at)}
               />
               <View style={styles.trialNotice}>
-                {trialDays > 0 ? (
+                {!trialEnded ? (
                   <Text style={styles.trialText}>
-                    Pro features are active for {trialDays} more day{trialDays !== 1 ? 's' : ''}.
+                    Pro features are active for {trialRemaining}.
                     Subscribe before the trial ends to keep push & SMS notifications.
                   </Text>
                 ) : (

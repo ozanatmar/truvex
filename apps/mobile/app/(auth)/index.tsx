@@ -118,8 +118,8 @@ const styles = StyleSheet.create({
   },
   inner: {
     flex: 1,
-    justifyContent: 'center',
     paddingHorizontal: 32,
+    paddingTop: 100,
   },
   logo: {
     fontSize: 40,
@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
   tagline: {
     fontSize: 16,
     color: '#7A8899',
-    marginBottom: 48,
+    marginBottom: 32,
   },
   form: {
     gap: 12,

@@ -121,8 +121,9 @@ All tables live in the `truvex` schema. See `supabase/migrations/001_truvex_sche
 2. User enters OTP → `supabase.auth.verifyOtp({ phone, token, type: 'sms' })`
 3. On success, trigger creates `truvex.profiles` row if new
 4. App checks `truvex.locations.manager_id = user.id` → manager
-5. If not manager, checks `truvex.location_members` with `member_type = 'worker'` → worker
-6. Neither → `/no-location` (or onboarding if they tap "Set up my restaurant")
+5. If not manager, calls `truvex.claim_pending_invites()` RPC — attaches any pending-invite `location_members` rows (where `invited_phone` matches and `user_id IS NULL`) to this user and promotes the stored primary/additional roles into `worker_roles`. The RPC is `SECURITY DEFINER` because workers can't SELECT or UPDATE pending-invite rows under RLS (`user_id = auth.uid()` hides them).
+6. Checks `truvex.location_members` with `member_type = 'worker'` and `status = 'active'` → worker
+7. Neither → `/no-location` (or onboarding if they tap "Set up my restaurant")
 
 ---
 

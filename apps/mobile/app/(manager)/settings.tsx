@@ -123,6 +123,7 @@ export default function ManagerSettingsScreen() {
             if (!session) return;
             setDeleting(true);
             const { error } = await supabase.functions.invoke('delete-location', {
+              headers: { Authorization: `Bearer ${session.access_token}` },
               body: { location_id: location.id },
             });
             setDeleting(false);

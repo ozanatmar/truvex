@@ -54,21 +54,39 @@ export default function TeamScreen() {
       ? await supabase.schema('truvex').from('profiles').select('*').in('id', userIds)
       : { data: [] };
 
-    // Fetch roles
-    const { data: allRoles } = await supabase
-      .schema('truvex').from('worker_roles')
-      .select('*, role:roles(*)')
-      .eq('location_id', activeLocation.id);
+    // Fetch worker_roles (claimed workers) and the location's role list
+    // (for synthesising roles on pending invites — their role is stored on
+    // the member row and only promoted to worker_roles after claim).
+    const [{ data: allRoles }, { data: locationRoles }] = await Promise.all([
+      supabase.schema('truvex').from('worker_roles')
+        .select('*, role:roles(*)')
+        .eq('location_id', activeLocation.id),
+      supabase.schema('truvex').from('roles')
+        .select('*')
+        .eq('location_id', activeLocation.id),
+    ]);
+    const roleById = new Map<string, any>((locationRoles ?? []).map((r: any) => [r.id, r]));
 
     setWorkers(
       members.map((m: any) => {
         const profile = (profiles ?? []).find((p: any) => p.id === m.user_id);
+        const claimedRoles = (allRoles ?? []).filter((r: any) => r.user_id === m.user_id);
+        const pendingRoles = !m.user_id
+          ? [
+              ...(m.primary_role_id && roleById.has(m.primary_role_id)
+                ? [{ role_id: m.primary_role_id, is_primary: true, role: roleById.get(m.primary_role_id) }]
+                : []),
+              ...((m.additional_role_ids ?? []) as string[])
+                .filter((rid) => roleById.has(rid))
+                .map((rid) => ({ role_id: rid, is_primary: false, role: roleById.get(rid) })),
+            ]
+          : [];
         return {
           id: profile?.id ?? m.id,
           name: m.invited_name ?? profile?.name ?? null,
           phone: profile?.phone ?? m.invited_phone ?? '',
           member: m,
-          roles: (allRoles ?? []).filter((r: any) => r.user_id === m.user_id),
+          roles: claimedRoles.length > 0 ? claimedRoles : pendingRoles,
         };
       })
     );
@@ -80,7 +98,7 @@ export default function TeamScreen() {
     fetchWorkers();
   }, [fetchWorkers]));
 
-  async function handleRemove(workerId: string, workerName: string) {
+  async function handleRemove(memberRowId: string, userId: string | null, workerName: string) {
     Alert.alert(
       `Remove ${workerName}?`,
       'They will lose access to this location\'s callouts.',
@@ -93,14 +111,15 @@ export default function TeamScreen() {
             await supabase
               .schema('truvex').from('location_members')
               .delete()
-              .eq('location_id', activeLocation!.id)
-              .eq('user_id', workerId);
+              .eq('id', memberRowId);
 
-            await supabase
-              .schema('truvex').from('worker_roles')
-              .delete()
-              .eq('location_id', activeLocation!.id)
-              .eq('user_id', workerId);
+            if (userId) {
+              await supabase
+                .schema('truvex').from('worker_roles')
+                .delete()
+                .eq('location_id', activeLocation!.id)
+                .eq('user_id', userId);
+            }
 
             fetchWorkers();
           },
@@ -109,12 +128,11 @@ export default function TeamScreen() {
     );
   }
 
-  async function toggleMute(workerId: string, isMuted: boolean) {
+  async function toggleMute(memberRowId: string, isMuted: boolean) {
     await supabase
       .schema('truvex').from('location_members')
       .update({ is_muted: !isMuted })
-      .eq('location_id', activeLocation!.id)
-      .eq('user_id', workerId);
+      .eq('id', memberRowId);
 
     fetchWorkers();
   }
@@ -196,7 +214,7 @@ export default function TeamScreen() {
 
                 <View style={styles.cardActions}>
                   <TouchableOpacity
-                    onPress={() => toggleMute(worker.id, worker.member.is_muted)}
+                    onPress={() => toggleMute(worker.member.id, worker.member.is_muted)}
                     style={styles.actionButton}
                   >
                     <Text style={styles.actionText}>
@@ -204,7 +222,7 @@ export default function TeamScreen() {
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    onPress={() => handleRemove(worker.id, worker.name ?? worker.phone)}
+                    onPress={() => handleRemove(worker.member.id, worker.member.user_id, worker.name ?? worker.phone)}
                     style={styles.actionButton}
                   >
                     <Text style={[styles.actionText, styles.removeText]}>Remove</Text>

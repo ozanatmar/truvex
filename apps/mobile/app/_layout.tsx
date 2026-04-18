@@ -162,31 +162,10 @@ export default function RootLayout() {
       }
 
       report(70);
+      // RLS hides rows with user_id IS NULL from workers, so the claim has
+      // to run as a SECURITY DEFINER RPC rather than a client-side update.
       if (profile) {
-        const { data: pendingInvites } = await supabase
-          .schema('truvex').from('location_members')
-          .select('id, location_id, primary_role_id, additional_role_ids')
-          .eq('invited_phone', (profile as any).phone)
-          .is('user_id', null);
-
-        if (pendingInvites && pendingInvites.length > 0) {
-          for (const invite of pendingInvites) {
-            await supabase.schema('truvex').from('location_members')
-              .update({ user_id: userId, status: 'active', invited_phone: null })
-              .eq('id', invite.id);
-
-            const roleRows = [];
-            if (invite.primary_role_id) {
-              roleRows.push({ location_id: invite.location_id, user_id: userId, role_id: invite.primary_role_id, is_primary: true });
-            }
-            for (const rid of (invite.additional_role_ids ?? [])) {
-              roleRows.push({ location_id: invite.location_id, user_id: userId, role_id: rid, is_primary: false });
-            }
-            if (roleRows.length > 0) {
-              await supabase.schema('truvex').from('worker_roles').upsert(roleRows);
-            }
-          }
-        }
+        await supabase.schema('truvex').rpc('claim_pending_invites');
       }
 
       report(90);

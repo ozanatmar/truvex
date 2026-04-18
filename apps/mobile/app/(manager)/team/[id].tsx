@@ -7,84 +7,130 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 import { useStore } from '../../../lib/store';
-import { Profile, Role, WorkerRole } from '../../../types/database';
+import { Role } from '../../../types/database';
+import { formatPhoneDisplay } from '../../../lib/utils';
 
 export default function EditWorkerScreen() {
-  const { id: workerId } = useLocalSearchParams<{ id: string }>();
+  // `id` is either a profile id (claimed worker) or a location_members.id
+  // (pending invite). team.tsx sets worker.id to profile.id when present,
+  // else to the member row id.
+  const { id: paramId } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { activeLocation } = useStore();
 
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [memberRowId, setMemberRowId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [phone, setPhone] = useState<string>('');
   const [name, setName] = useState('');
   const [roles, setRoles] = useState<Role[]>([]);
-  const [workerRoles, setWorkerRoles] = useState<WorkerRole[]>([]);
   const [primaryRoleId, setPrimaryRoleId] = useState('');
   const [additionalRoleIds, setAdditionalRoleIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!workerId || !activeLocation) return;
+    if (!paramId || !activeLocation) return;
 
-    Promise.all([
-      supabase.schema('truvex').from('profiles').select('*').eq('id', workerId).single(),
-      supabase.schema('truvex').from('roles').select('*').eq('location_id', activeLocation.id),
-      supabase.schema('truvex').from('worker_roles').select('*').eq('user_id', workerId).eq('location_id', activeLocation.id),
-    ]).then(([profileRes, rolesRes, wrRes]) => {
-      if (profileRes.data) {
-        setProfile(profileRes.data);
-        setName(profileRes.data.name ?? '');
+    (async () => {
+      // Find the membership row — paramId may be either a user_id or the
+      // member row id. `or(...)` covers both cases in one query.
+      const { data: member } = await supabase
+        .schema('truvex').from('location_members')
+        .select('*')
+        .eq('location_id', activeLocation.id)
+        .or(`user_id.eq.${paramId},id.eq.${paramId}`)
+        .maybeSingle();
+
+      const { data: rolesData } = await supabase
+        .schema('truvex').from('roles')
+        .select('*')
+        .eq('location_id', activeLocation.id);
+      if (rolesData) setRoles(rolesData);
+
+      if (!member) {
+        setLoading(false);
+        return;
       }
-      if (rolesRes.data) setRoles(rolesRes.data);
-      if (wrRes.data) {
-        setWorkerRoles(wrRes.data);
-        const primary = wrRes.data.find((wr: WorkerRole) => wr.is_primary);
+
+      setMemberRowId((member as any).id);
+      const mUserId = (member as any).user_id as string | null;
+      setUserId(mUserId);
+
+      if (mUserId) {
+        // Claimed worker: name + phone from profile, roles from worker_roles
+        const [{ data: profile }, { data: wr }] = await Promise.all([
+          supabase.schema('truvex').from('profiles').select('*').eq('id', mUserId).maybeSingle(),
+          supabase.schema('truvex').from('worker_roles').select('*').eq('user_id', mUserId).eq('location_id', activeLocation.id),
+        ]);
+        setName((member as any).invited_name ?? (profile as any)?.name ?? '');
+        setPhone((profile as any)?.phone ?? '');
+        const primary = (wr ?? []).find((r: any) => r.is_primary);
         if (primary) setPrimaryRoleId(primary.role_id);
-        setAdditionalRoleIds(
-          wrRes.data.filter((wr: WorkerRole) => !wr.is_primary).map((wr: WorkerRole) => wr.role_id)
-        );
+        setAdditionalRoleIds((wr ?? []).filter((r: any) => !r.is_primary).map((r: any) => r.role_id));
+      } else {
+        // Pending invite: read everything from the member row
+        setName((member as any).invited_name ?? '');
+        setPhone((member as any).invited_phone ?? '');
+        setPrimaryRoleId((member as any).primary_role_id ?? '');
+        setAdditionalRoleIds((member as any).additional_role_ids ?? []);
       }
+
       setLoading(false);
-    });
-  }, [workerId, activeLocation]);
+    })();
+  }, [paramId, activeLocation]);
 
   async function handleSave() {
-    if (!workerId || !activeLocation) return;
+    if (!memberRowId || !activeLocation) return;
     setSaving(true);
 
-    // Update profile name (if worker has an account)
-    await supabase.schema('truvex').from('profiles').update({ name: name.trim() }).eq('id', workerId);
-    // Also update invited_name on the membership row (covers pending invites + syncs display name)
-    await supabase.schema('truvex').from('location_members')
-      .update({ invited_name: name.trim() })
-      .eq('location_id', activeLocation.id)
-      .eq('user_id', workerId);
+    if (userId) {
+      // Claimed worker — update profile + rebuild worker_roles
+      await supabase.schema('truvex').from('profiles').update({ name: name.trim() }).eq('id', userId);
+      await supabase.schema('truvex').from('location_members')
+        .update({
+          invited_name: name.trim(),
+          primary_role_id: primaryRoleId || null,
+          additional_role_ids: additionalRoleIds,
+        })
+        .eq('id', memberRowId);
 
-    // Replace worker_roles
-    await supabase
-      .schema('truvex').from('worker_roles')
-      .delete()
-      .eq('user_id', workerId)
-      .eq('location_id', activeLocation.id);
+      await supabase
+        .schema('truvex').from('worker_roles')
+        .delete()
+        .eq('user_id', userId)
+        .eq('location_id', activeLocation.id);
 
-    const newRoles = [
-      { location_id: activeLocation.id, user_id: workerId, role_id: primaryRoleId, is_primary: true },
-      ...additionalRoleIds.map((rid) => ({
-        location_id: activeLocation.id,
-        user_id: workerId,
-        role_id: rid,
-        is_primary: false,
-      })),
-    ];
-
-    await supabase.schema('truvex').from('worker_roles').insert(newRoles);
+      const newRoles = [
+        ...(primaryRoleId
+          ? [{ location_id: activeLocation.id, user_id: userId, role_id: primaryRoleId, is_primary: true }]
+          : []),
+        ...additionalRoleIds.map((rid) => ({
+          location_id: activeLocation.id,
+          user_id: userId,
+          role_id: rid,
+          is_primary: false,
+        })),
+      ];
+      if (newRoles.length > 0) {
+        await supabase.schema('truvex').from('worker_roles').insert(newRoles);
+      }
+    } else {
+      // Pending invite — update the member row; worker_roles gets populated
+      // by claim_pending_invites() when the worker signs up.
+      await supabase.schema('truvex').from('location_members')
+        .update({
+          invited_name: name.trim(),
+          primary_role_id: primaryRoleId || null,
+          additional_role_ids: additionalRoleIds,
+        })
+        .eq('id', memberRowId);
+    }
 
     setSaving(false);
     router.back();
@@ -128,7 +174,7 @@ export default function EditWorkerScreen() {
         />
 
         <Text style={styles.label}>Phone</Text>
-        <Text style={styles.phoneReadOnly}>{profile?.phone}</Text>
+        <Text style={styles.phoneReadOnly}>{phone ? formatPhoneDisplay(phone) : '—'}</Text>
 
         <Text style={styles.label}>Primary Role</Text>
         <View style={styles.roleGrid}>
@@ -200,7 +246,7 @@ const styles = StyleSheet.create({
   },
   phoneReadOnly: {
     fontSize: 15,
-    color: '#555',
+    color: '#aaa',
     paddingHorizontal: 14,
     paddingVertical: 12,
   },

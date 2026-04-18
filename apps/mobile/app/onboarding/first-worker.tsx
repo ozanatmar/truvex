@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -37,7 +37,7 @@ export default function FirstWorkerScreen() {
   const digits = phone.replace(/\D/g, '');
   const isValid = name.trim().length > 0 && digits.length === 10 && selectedRoleId !== '';
 
-  useState(() => {
+  useEffect(() => {
     if (!activeLocation) return;
     setLoadingRoles(true);
     supabase
@@ -48,7 +48,7 @@ export default function FirstWorkerScreen() {
         if (data) setRoles(data);
         setLoadingRoles(false);
       });
-  });
+  }, [activeLocation]);
 
   async function pickFromContacts() {
     const { status } = await Contacts.requestPermissionsAsync();

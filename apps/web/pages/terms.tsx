@@ -19,11 +19,14 @@ export default function Terms() {
         <div style={s.container}>
           <span style={s.eyebrow}>Legal</span>
           <h1 style={s.heading}>Terms of Service</h1>
-          <p style={s.updated}>Last updated: April 2026</p>
+          <p style={s.updated}>Last updated: April 18, 2026</p>
 
           <div style={s.body} className="legal-body">
             <p>
-              By accessing or using Truvex (&ldquo;the Service&rdquo;), you agree to be bound by these Terms of Service.
+              The Truvex mobile application and the website at truvex.app (collectively, &ldquo;the Service&rdquo;)
+              are operated by Atmar Horeca EOOD, a company registered in Bulgaria under UIC 205062463,
+              with registered address str. Manol Lazarov 67, 9022 Varna, Bulgaria.
+              By accessing or using the Service, you agree to be bound by these Terms of Service.
               If you do not agree, do not use the Service.
             </p>
 
@@ -66,6 +69,40 @@ export default function Terms() {
             <p>
               We may terminate or suspend your account at our discretion if you violate these Terms.
               You may terminate your account at any time by contacting us.
+            </p>
+
+            <h2>SMS Program Terms</h2>
+            <p>
+              <strong>Program name:</strong> Truvex
+            </p>
+            <p>
+              <strong>Program description:</strong> Truvex sends SMS messages to users who have created an account
+              in the Truvex mobile app and verified their phone number. Messages include: one-time verification codes
+              at login, shift callout notifications when a manager at a location you work at needs coverage,
+              confirmations when you are selected to cover a shift, notifications when a shift you responded to has
+              been filled, and reminders about open callouts at your location.
+            </p>
+            <p>
+              <strong>Message frequency:</strong> Message frequency varies based on shift availability at your location.
+              Typical users receive 0 to 10 messages per week.
+            </p>
+            <p>
+              <strong>Cost:</strong> Message and data rates may apply. Truvex does not charge for SMS messages,
+              but your mobile carrier may.
+            </p>
+            <p>
+              <strong>Opt-out:</strong> Reply <strong>STOP</strong> to any Truvex message to unsubscribe from SMS
+              notifications. You will receive a single confirmation message and no further SMS messages after that.
+              Opting out of SMS does not remove your obligation to respond to shift communications from your employer
+              through other channels such as push notifications within the app.
+            </p>
+            <p>
+              <strong>Help:</strong> Reply <strong>HELP</strong> to any Truvex message for assistance,
+              or contact <a href="mailto:hello@truvex.app" style={s.link}>hello@truvex.app</a>.
+            </p>
+            <p>
+              <strong>Supported carriers:</strong> AT&amp;T, T-Mobile, Verizon, Sprint, US Cellular,
+              and most other US mobile carriers. Carriers are not liable for delayed or undelivered messages.
             </p>
 
             <h2>Contact</h2>

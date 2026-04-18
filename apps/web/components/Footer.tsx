@@ -61,7 +61,10 @@ export default function Footer() {
         </div>
 
         <div style={s.bottom}>
-          <p style={s.copy}>© 2026 Truvex. All rights reserved.</p>
+          <div style={s.copyBlock}>
+            <p style={s.entity}>Truvex is operated by Atmar Horeca EOOD, registered in Bulgaria under UIC 205062463.</p>
+            <p style={s.copy}>© 2026 Truvex. All rights reserved.</p>
+          </div>
           <div style={s.social}>
             <a href="https://x.com/truvexapp" aria-label="Truvex on X" rel="noopener noreferrer" target="_blank" style={s.socialLink}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -176,6 +179,18 @@ const s: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
+  },
+  copyBlock: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 4,
+  },
+  entity: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.25)',
+    margin: 0,
+    fontFamily: "'DM Sans', sans-serif",
+    lineHeight: 1.4,
   },
   copy: {
     fontSize: 12,

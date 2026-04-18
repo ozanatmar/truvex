@@ -19,12 +19,15 @@ export default function Privacy() {
         <div style={s.container}>
           <span style={s.eyebrow}>Legal</span>
           <h1 style={s.heading}>Privacy Policy</h1>
-          <p style={s.updated}>Last updated: April 2026</p>
+          <p style={s.updated}>Last updated: April 18, 2026</p>
 
           <div style={s.body} className="legal-body">
             <p>
-              Truvex (&ldquo;we&rdquo;, &ldquo;us&rdquo;, or &ldquo;our&rdquo;) operates the Truvex mobile application and website at truvex.app.
-              This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our service.
+              Truvex is a product of Atmar Horeca EOOD, a company registered in Bulgaria under UIC 205062463,
+              with registered address str. Manol Lazarov 67, 9022 Varna, Bulgaria.
+              In this Privacy Policy, &ldquo;we&rdquo;, &ldquo;us&rdquo;, and &ldquo;our&rdquo; refer to Atmar Horeca EOOD.
+              This policy explains how we collect, use, disclose, and safeguard your information
+              when you use the Truvex mobile application and the website at truvex.app.
             </p>
 
             <h2>Information We Collect</h2>
@@ -47,6 +50,25 @@ export default function Privacy() {
               <strong>Twilio</strong> (SMS delivery for authentication and shift notifications),
               <strong>Expo</strong> (push notification delivery), and <strong>Stripe</strong> (payment processing for paid plans).
               Each of these services has its own privacy policy governing how they handle your data.
+            </p>
+
+            <h2>SMS and Phone Number Data</h2>
+            <p>
+              When you create a Truvex account, we collect your mobile phone number to send you verification codes
+              and shift-related notifications as described in our Terms of Service. We use Twilio, a third-party SMS
+              provider, to deliver these messages. Twilio processes your phone number solely for message delivery
+              and is bound by its own privacy terms.
+            </p>
+            <p>
+              Your phone number and SMS opt-in status are never sold, rented, or shared with third parties for marketing,
+              advertising, or promotional purposes. Mobile information will not be shared with third parties or affiliates
+              for marketing or promotional purposes.
+            </p>
+            <p>
+              You can revoke SMS consent at any time by replying STOP to any Truvex message. Revoking SMS consent does not
+              delete your Truvex account. You will continue to receive notifications through the mobile app via push
+              notifications. Opting out of SMS does not remove your obligation to respond to shift communications from
+              your employer through other channels.
             </p>
 
             <h2>Data Retention</h2>

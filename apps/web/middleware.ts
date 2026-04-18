@@ -24,16 +24,6 @@ export function middleware(request: NextRequest) {
   const maintenanceMode = process.env.MAINTENANCE_MODE === 'true';
   const isLaunched = process.env.IS_LAUNCHED === 'true';
 
-  // Canonical host: send www.truvex.app to truvex.app with a 301 so crawlers
-  // consolidate link signals on a single origin. Runs before the other gates
-  // to avoid a double redirect.
-  const host = request.headers.get('host') ?? '';
-  if (host === 'www.truvex.app') {
-    const url = new URL(request.url);
-    url.host = 'truvex.app';
-    return NextResponse.redirect(url, 301);
-  }
-
   // --- Maintenance gate (highest priority) ---
   if (maintenanceMode) {
     if (pathname.startsWith('/api/')) return NextResponse.next();

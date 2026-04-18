@@ -248,6 +248,9 @@ const FAQ_ITEMS = [
 export default function Home() {
   const [isAnnual, setIsAnnual] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [mobileCTAVisible, setMobileCTAVisible] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const els = document.querySelectorAll('.anim');
@@ -288,6 +291,44 @@ export default function Home() {
     obs.observe(bar);
     return () => obs.disconnect();
   }, []);
+
+  useEffect(() => {
+    const heroEl = document.getElementById('hero');
+    if (!heroEl) return;
+    const heroObs = new IntersectionObserver(([entry]) => { setMobileCTAVisible(!entry.isIntersecting); }, { threshold: 0 });
+    heroObs.observe(heroEl);
+    const footerEl = document.querySelector('footer');
+    let footerObs: IntersectionObserver | undefined;
+    if (footerEl) {
+      footerObs = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) setMobileCTAVisible(false); }, { threshold: 0 });
+      footerObs.observe(footerEl);
+    }
+    return () => { heroObs.disconnect(); footerObs?.disconnect(); };
+  }, []);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape' && modalOpen) setModalOpen(false); }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [modalOpen]);
+
+  useEffect(() => {
+    document.body.style.overflow = modalOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [modalOpen]);
+
+  function handleCopy() {
+    const msg = 'Hey, I just found this app called Truvex that automatically texts the whole team when someone calls out. No more group chat chaos. Check it out at truvex.app \u2014 could save you a lot of time.';
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(msg).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = msg; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch (_) {}
+      document.body.removeChild(ta);
+    }
+  }
 
   function toggleFaq(i: number) {
     setOpenFaq((prev) => (prev === i ? null : i));
@@ -336,7 +377,19 @@ export default function Home() {
                 Trusted by 500+ restaurant managers
               </p>
               <div className="hero-ctas">
+                <a href="#pricing" className="btn-primary">Start My Free Trial</a>
                 <a href="#how-it-works" className="btn-ghost">See How It Works &darr;</a>
+              </div>
+              <p className="hero-microcopy">Free for 14 days &middot; No credit card required &middot; Setup in 15 minutes</p>
+              <div className="app-badges">
+                <a href="#" className="app-badge" aria-label="Download on the Apple App Store">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11" /></svg>
+                  <div className="app-badge-text"><span className="app-badge-sub">Download on the</span><span className="app-badge-name">App Store</span></div>
+                </a>
+                <a href="#" className="app-badge" aria-label="Get it on Google Play">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3.18 23.22c.3.17.63.25.97.25.3 0 .6-.07.88-.2l13.1-7.22-2.8-2.8-12.15 9.97zM1.07 1.57C1.03 1.78 1 2 1 2.22v19.56c0 .22.03.44.07.64L13 11 1.07 1.57zM20.45 10.25l-2.96-1.63-3.14 3.14 3.14 3.14 2.98-1.64c.84-.47.84-1.54-.02-2.01zM4.15.73L17.25 7.95l-2.8 2.8L3.15.98c.3-.13.62-.19.95-.19.36 0 .7.07 1.05.2z" fill="white" /></svg>
+                  <div className="app-badge-text"><span className="app-badge-sub">Get it on</span><span className="app-badge-name">Google Play</span></div>
+                </a>
               </div>
             </div>
             <div className="hero-image-wrap">
@@ -355,6 +408,16 @@ export default function Home() {
               {['Toast', 'Square', '7shifts', 'Deputy', 'Homebase'].map((t) => (
                 <span key={t} className="trust-logo">{t}</span>
               ))}
+            </div>
+            <div className="trust-badges">
+              <a href="#" className="app-badge" aria-label="Download on App Store" style={{ padding: '7px 12px' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11" /></svg>
+                <div className="app-badge-text"><span className="app-badge-sub">App Store</span></div>
+              </a>
+              <a href="#" className="app-badge" aria-label="Get on Google Play" style={{ padding: '7px 12px' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3.18 23.22c.3.17.63.25.97.25.3 0 .6-.07.88-.2l13.1-7.22-2.8-2.8-12.15 9.97zM1.07 1.57C1.03 1.78 1 2 1 2.22v19.56c0 .22.03.44.07.64L13 11 1.07 1.57zM20.45 10.25l-2.96-1.63-3.14 3.14 3.14 3.14 2.98-1.64c.84-.47.84-1.54-.02-2.01zM4.15.73L17.25 7.95l-2.8 2.8L3.15.98c.3-.13.62-.19.95-.19.36 0 .7.07 1.05.2z" fill="white" /></svg>
+                <div className="app-badge-text"><span className="app-badge-sub">Google Play</span></div>
+              </a>
             </div>
           </div>
         </div>
@@ -416,6 +479,10 @@ export default function Home() {
           </div>
           <div className="how-img anim">
             <img src="/how-it-works-flow.jpg" alt="Three-step process showing how Truvex automates shift callout coverage" width={1000} height={360} loading="lazy" />
+          </div>
+          <div className="how-cta anim">
+            <a href="#pricing" className="btn-white">Start My Free Trial</a>
+            <p className="microcopy">Free for 14 days &middot; No credit card required</p>
           </div>
         </div>
       </section>
@@ -530,6 +597,11 @@ export default function Home() {
                 <li className="worker-bullet"><span className="wbullet-icon">&#10003;</span><span><strong>Accept with one tap</strong> &mdash; See the details, tap accept, you&rsquo;re done</span></li>
                 <li className="worker-bullet"><span className="wbullet-icon">&#10003;</span><span><strong>Earn more on your terms</strong> &mdash; Turn notifications on or off anytime from settings</span></li>
               </ul>
+              <div className="worker-ctas">
+                <button className="btn-primary" onClick={() => setModalOpen(true)} aria-label="Tell my manager about Truvex">Tell My Manager About Truvex</button>
+                <p className="worker-hint">Tap to send a pre-written message to your manager</p>
+                <a href="#" className="btn-ghost-dark" style={{ marginTop: 4 }}>Download the Free App</a>
+              </div>
             </div>
             <div className="worker-img anim anim-d2">
               <img src="/worker-notification.jpg" alt="Restaurant worker receiving an open shift notification on their phone via Truvex" width={480} height={560} loading="lazy" />
@@ -565,6 +637,8 @@ export default function Home() {
                 <li className="pf no"><span className="pf-icon">&#10007;</span> SMS alerts</li>
                 <li className="pf no"><span className="pf-icon">&#10007;</span> Analytics</li>
               </ul>
+              <a href="#" className="btn-ghost plan-cta">Get Started Free</a>
+              <p className="plan-microcopy">No credit card &middot; No expiration</p>
             </div>
             {/* Pro */}
             <div className="pricing-card popular anim anim-d2">
@@ -583,6 +657,8 @@ export default function Home() {
                 <li className="pf yes"><span className="pf-icon">&#10003;</span> Worker mute controls</li>
                 <li className="pf no"><span className="pf-icon">&#10007;</span> Advanced analytics</li>
               </ul>
+              <a href="#" className="btn-primary plan-cta">Start 14-Day Free Trial</a>
+              <p className="plan-microcopy">No credit card required</p>
             </div>
             {/* Business */}
             <div className="pricing-card anim anim-d3">
@@ -599,6 +675,8 @@ export default function Home() {
                 <li className="pf yes"><span className="pf-icon">&#10003;</span> Priority support</li>
                 <li className="pf yes"><span className="pf-icon">&#10003;</span> Everything in Pro</li>
               </ul>
+              <a href="#" className="btn-primary plan-cta">Start 14-Day Free Trial</a>
+              <p className="plan-microcopy">No credit card required</p>
             </div>
           </div>
           <p className="pricing-footer anim">Workers are always free &mdash; no charge per worker &nbsp;&bull;&nbsp; Questions? Email <a href="mailto:hello@truvex.app">hello@truvex.app</a></p>
@@ -615,7 +693,9 @@ export default function Home() {
         <div className="lp-container">
           <div className="cta-break-inner anim">
             <h2>Ready to stop the 6 AM scramble?</h2>
-            <p className="cta-break-sub">We&rsquo;re launching soon. Truvex gives restaurant managers one-tap coverage when someone calls in sick.</p>
+            <p className="cta-break-sub">Join restaurant managers who stopped scrambling and started managing.</p>
+            <a href="#pricing" className="btn-white">Start My Free Trial</a>
+            <p className="cta-break-micro">14-day free trial &middot; No credit card &middot; Setup in 15 minutes &middot; Cancel anytime</p>
           </div>
         </div>
       </section>
@@ -653,12 +733,65 @@ export default function Home() {
           <div className="final-cta-inner anim">
             <span className="eyebrow eyebrow-coral">Your Next Callout Is Coming</span>
             <h2>Be ready.</h2>
-            <p className="final-cta-body">We&rsquo;re putting the finishing touches on Truvex.<br />Questions? <a href="mailto:hello@truvex.app" style={{ color: '#0E7C7B', textDecoration: 'underline' }}>hello@truvex.app</a></p>
+            <p className="final-cta-body">Join restaurant managers who stopped scrambling.<br />Free for 14 days. No credit card. Cancel anytime.</p>
+            <a href="#pricing" className="btn-primary">Start My Free Trial</a>
+            <p className="final-cta-micro">No credit card &middot; Setup in 15 minutes &middot; Cancel anytime</p>
+            <div className="download-row">
+              <a href="#" className="app-badge" aria-label="Download on the Apple App Store">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11" /></svg>
+                <div className="app-badge-text"><span className="app-badge-sub">Download on the</span><span className="app-badge-name">App Store</span></div>
+              </a>
+              <a href="#" className="app-badge" aria-label="Get it on Google Play">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3.18 23.22c.3.17.63.25.97.25.3 0 .6-.07.88-.2l13.1-7.22-2.8-2.8-12.15 9.97zM1.07 1.57C1.03 1.78 1 2 1 2.22v19.56c0 .22.03.44.07.64L13 11 1.07 1.57zM20.45 10.25l-2.96-1.63-3.14 3.14 3.14 3.14 2.98-1.64c.84-.47.84-1.54-.02-2.01zM4.15.73L17.25 7.95l-2.8 2.8L3.15.98c.3-.13.62-.19.95-.19.36 0 .7.07 1.05.2z" fill="white" /></svg>
+                <div className="app-badge-text"><span className="app-badge-sub">Get it on</span><span className="app-badge-name">Google Play</span></div>
+              </a>
+              <span className="download-or">&mdash; OR &mdash;</span>
+              <div className="qr-block">
+                <img src="/qr-code.png" alt="QR code to download the Truvex app" width={200} height={200} loading="lazy" style={{ width: 100, height: 100 }} />
+                <p className="qr-caption">Scan to download on your phone</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       <Footer />
+
+      {/* MOBILE STICKY CTA */}
+      <div className={`mobile-cta-bar${mobileCTAVisible ? ' visible' : ''}`} aria-hidden={!mobileCTAVisible}>
+        <a href="#pricing" className="btn-primary" aria-label="Start free trial">Start Free Trial</a>
+        <p className="mobile-cta-micro">14-day free trial &middot; No credit card</p>
+      </div>
+
+      {/* TELL MY MANAGER MODAL */}
+      <div
+        className={`modal-overlay${modalOpen ? ' open' : ''}`}
+        role="dialog"
+        aria-modal={true}
+        aria-labelledby="modalTitle"
+        onClick={(e) => { if (e.target === e.currentTarget) setModalOpen(false); }}
+      >
+        <div className="modal">
+          <button className="modal-close" onClick={() => setModalOpen(false)} aria-label="Close modal">&times;</button>
+          <h3 id="modalTitle">Tell your manager about Truvex</h3>
+          <p className="modal-desc">Copy and paste this message, or tap &ldquo;Open in SMS&rdquo; to send it directly.</p>
+          <div className="modal-message">
+            Hey, I just found this app called Truvex that automatically texts the whole team when someone calls out. No more group chat chaos. Check it out at truvex.app &mdash; could save you a lot of time.
+          </div>
+          <div className="modal-actions">
+            <a
+              href="sms:?&body=Hey%2C%20I%20just%20found%20this%20app%20called%20Truvex%20that%20automatically%20texts%20the%20whole%20team%20when%20someone%20calls%20out.%20No%20more%20group%20chat%20chaos.%20Check%20it%20out%20at%20truvex.app%20%E2%80%94%20could%20save%20you%20a%20lot%20of%20time."
+              className="btn-primary"
+              aria-label="Open in SMS app"
+            >
+              Open in SMS
+            </a>
+            <button className={`btn-copy${copied ? ' copied' : ''}`} onClick={handleCopy} aria-label="Copy message to clipboard">
+              {copied ? 'Copied!' : 'Copy Message'}
+            </button>
+          </div>
+        </div>
+      </div>
     </>
   );
 }

@@ -227,7 +227,7 @@ create table truvex.locations (
 
 **Trial model — one-time per phone, lifetime:**
 - A phone gets **one** Pro trial, ever. Gated by `truvex.profiles.trial_used_at`.
-- The phone's first location is created `tier='free'`, `status='trialing'`, `trial_ends_at = now() + TRIAL_DURATION_SECONDS` (default 14 days). Push + SMS are enabled during the trial and the worker limit lifts to Pro (30).
+- The phone's first location is created `tier='free'`, `status='trialing'`, `trial_ends_at = now() + 14 days`. Push + SMS are enabled during the trial and the worker limit lifts to Pro (30).
 - `trial_used_at` is stamped on that first create. Every subsequent location this phone creates — even after deleting the first — starts `tier='free'`, `status='active'`, `trial_ends_at=null`. No more trials, ever.
 - A phone can create unlimited free locations. Each location is billed independently: one can be on `free`, another on `pro`, another on `business`.
 - `expire-trials` Edge Function runs every minute via `pg_cron` and flips `trialing` locations past `trial_ends_at` (with no `stripe_subscription_id`) to `status='expired'`.
@@ -532,7 +532,6 @@ TWILIO_ACCOUNT_SID=
 TWILIO_AUTH_TOKEN=
 TWILIO_PHONE_NUMBER=
 AUTH_TEST_PHONES=                  # Comma-separated E.164 list, bypasses Twilio Lookup VoIP filter
-TRIAL_DURATION_SECONDS=            # Optional override for Pro trial length (seconds). Default 1209600 (14d)
 ```
 
 ### Supabase Edge Functions (set via Supabase dashboard secrets)

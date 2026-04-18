@@ -55,14 +55,9 @@ serve(async (req) => {
       .single();
 
     const trialEligible = !profile?.trial_used_at;
-    const trialSecondsRaw = Number(Deno.env.get('TRIAL_DURATION_SECONDS') ?? '');
-    const trialSeconds = Number.isFinite(trialSecondsRaw) && trialSecondsRaw > 0
-      ? trialSecondsRaw
-      : DEFAULT_TRIAL_SECONDS;
-
     const now = new Date();
     const trialEndsAt = trialEligible
-      ? new Date(now.getTime() + trialSeconds * 1000).toISOString()
+      ? new Date(now.getTime() + DEFAULT_TRIAL_SECONDS * 1000).toISOString()
       : null;
 
     const { data: location, error: locationError } = await supabase

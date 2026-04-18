@@ -77,7 +77,6 @@ Truvex is a React Native (Expo) mobile app for restaurant shift callout manageme
 | `EXPO_ACCESS_TOKEN` | Expo push notification access token |
 | `SUPPORT_OWNER_PHONE` | Owner's phone number to receive support SMS (notify-support function) |
 | `STRIPE_SECRET_KEY` | Used by `delete-location` to cancel active Stripe subscriptions when a restaurant is deleted |
-| `TRIAL_DURATION_SECONDS` | Length of the one-time Pro trial per phone. Defaults to 14 days (`1209600`). Set to `840` on dev/preview for 14-minute trials to exercise the expiry flow. |
 
 ---
 
@@ -150,7 +149,7 @@ All tables live in the `truvex` schema. See `supabase/migrations/001_truvex_sche
 
 ### Trial model
 - Trial is **one-time per phone account**, gated by `truvex.profiles.trial_used_at`.
-- The first location created by a phone starts as `subscription_tier='free'`, `subscription_status='trialing'`, with `trial_ends_at = now() + TRIAL_DURATION_SECONDS` (default 14 days, 14 minutes on dev/preview).
+- The first location created by a phone starts as `subscription_tier='free'`, `subscription_status='trialing'`, with `trial_ends_at = now() + 14 days`.
 - During the trial the tier stays `free` but `hasProFeatures()` returns true — push + SMS are enabled, worker limit lifts to Pro (30).
 - Additional locations on the same phone: always `free`/`active`, no trial.
 - `expire-trials` Edge Function runs every minute via `pg_cron` — flips `trialing` locations past `trial_ends_at` with no `stripe_subscription_id` to `subscription_status='expired'`. Tier stays `free`.

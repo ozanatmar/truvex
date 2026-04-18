@@ -99,7 +99,7 @@ export default function WorkerHomeScreen() {
     if (!session) return;
 
     const channel = supabase
-      .channel('worker-callouts')
+      .channel(`worker-callouts:${session.user.id}:${Date.now()}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'truvex', table: 'callouts' },

@@ -89,7 +89,7 @@ export default function CalloutDetailScreen() {
     if (!id) return;
 
     const channel = supabase
-      .channel(`callout-${id}`)
+      .channel(`callout:${id}:${Date.now()}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'truvex', table: 'callout_responses', filter: `callout_id=eq.${id}` },

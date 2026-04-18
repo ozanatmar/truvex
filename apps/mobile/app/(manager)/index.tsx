@@ -64,7 +64,7 @@ export default function ManagerHomeScreen() {
     if (!activeLocation) return;
 
     const channel = supabase
-      .channel('manager-callouts')
+      .channel(`manager-callouts:${activeLocation.id}:${Date.now()}`)
       .on(
         'postgres_changes',
         {

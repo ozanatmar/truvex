@@ -19,11 +19,15 @@ serve(async (req) => {
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return json({ error: 'Unauthorized' }, 401);
+      return json({ error: 'Missing Authorization header' }, 401);
     }
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) return json({ error: 'Unauthorized' }, 401);
+    if (authError) {
+      console.error('getUser error:', authError.message);
+      return json({ error: `Auth failed: ${authError.message}` }, 401);
+    }
+    if (!user) return json({ error: 'No user for token' }, 401);
 
     const { location_id } = await req.json();
     if (!location_id || typeof location_id !== 'string') {

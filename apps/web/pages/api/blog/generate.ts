@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
+import { generateSlug } from '../../../lib/slug';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -63,16 +64,6 @@ Return a single JSON object with exactly three keys:
   - Do not include markdown, code fences, or any text outside the HTML
 
 Return only the raw JSON object. No markdown, no code fences, no explanation before or after. The first character of your response must be { and the last must be }.`;
-
-function generateSlug(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 80);
-}
 
 async function getUniqueSlug(baseSlug: string): Promise<string> {
   let slug = baseSlug;

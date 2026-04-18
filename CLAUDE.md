@@ -203,8 +203,8 @@ create table truvex.locations (
   name text not null,
   industry_type text not null default 'restaurant', -- multi-vertical ready
   manager_id uuid not null references truvex.profiles(id),
-  subscription_tier text not null default 'free', -- 'free' | 'starter' | 'pro'
-  subscription_status text not null default 'trialing',
+  subscription_tier text not null default 'free', -- 'free' | 'pro' | 'business'
+  subscription_status text not null default 'active',
   -- 'trialing' | 'active' | 'past_due' | 'cancelled' | 'expired'
   trial_ends_at timestamptz,
   subscription_period_end timestamptz,
@@ -214,16 +214,28 @@ create table truvex.locations (
 );
 ```
 **Subscription tiers:**
-- `free` — up to 10 workers, no push/SMS
-- `starter` — up to 30 workers, push + SMS ($49/month)
-- `pro` — unlimited workers, push + SMS ($99/month)
+- `free` — up to 10 workers, no push/SMS, shareable-link notifications only
+- `pro` — up to 30 workers, push + SMS ($49/month)
+- `business` — unlimited workers, push + SMS, analytics dashboard ($99/month)
 
 **Subscription statuses:**
-- `trialing` — within the 14-day free trial
-- `active` — paid and current
+- `trialing` — within the one-time Pro trial (see Trial Model below)
+- `active` — paid and current, or settled on the free tier after trial
 - `past_due` — payment failed, grace period
 - `cancelled` — cancelled by manager, access continues until `subscription_period_end`
-- `expired` — trial ended or subscription fully lapsed, no notifications
+- `expired` — trial ended with no paid subscription, or subscription fully lapsed — no push/SMS
+
+**Trial model — one-time per phone, lifetime:**
+- A phone gets **one** Pro trial, ever. Gated by `truvex.profiles.trial_used_at`.
+- The phone's first location is created `tier='free'`, `status='trialing'`, `trial_ends_at = now() + TRIAL_DURATION_SECONDS` (default 14 days). Push + SMS are enabled during the trial and the worker limit lifts to Pro (30).
+- `trial_used_at` is stamped on that first create. Every subsequent location this phone creates — even after deleting the first — starts `tier='free'`, `status='active'`, `trial_ends_at=null`. No more trials, ever.
+- A phone can create unlimited free locations. Each location is billed independently: one can be on `free`, another on `pro`, another on `business`.
+- `expire-trials` Edge Function runs every minute via `pg_cron` and flips `trialing` locations past `trial_ends_at` (with no `stripe_subscription_id`) to `status='expired'`.
+
+**Deleting a location:**
+- Manager → Settings → "Delete this restaurant" → `delete-location` Edge Function.
+- Cancels any active Stripe subscription immediately, then deletes the row. FK cascades wipe roles, worker_roles, location_members, callouts, callout_responses, notification_log, shift_presets, support_tickets.
+- `profiles` and `auth.users` are never touched. Deleting a location does not delete the manager or worker accounts, and does not restore the trial.
 
 ### `truvex.location_members`
 Links users to locations. A worker can be in multiple locations.
@@ -443,7 +455,7 @@ create table truvex.shift_presets (
 **The app never touches payment directly. No in-app purchase.**
 
 1. Manager taps "Upgrade" inside the native app
-2. App opens browser: `https://truvex.app/upgrade?location_id=[id]&tier=[starter|pro]`
+2. App opens browser: `https://truvex.app/upgrade?location_id=[id]&tier=[pro|business]`
 3. Web page authenticates the manager via phone OTP (same Supabase session)
 4. Stripe Checkout session created server-side with `success_url = https://truvex.app/success?session_id={CHECKOUT_SESSION_ID}`
 5. Manager completes payment on Stripe
@@ -513,12 +525,14 @@ SUPABASE_SERVICE_ROLE_KEY=        # Server-side only, never expose to client
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
-STRIPE_STARTER_PRICE_ID=          # Stripe price ID for $49/mo Starter plan
-STRIPE_PRO_PRICE_ID=               # Stripe price ID for $99/mo Pro plan
+STRIPE_PRO_PRICE_ID=               # Stripe price ID for $49/mo Pro plan
+STRIPE_BUSINESS_PRICE_ID=          # Stripe price ID for $99/mo Business plan
 NEXT_PUBLIC_APP_URL=               # e.g. https://truvex.app
 TWILIO_ACCOUNT_SID=
 TWILIO_AUTH_TOKEN=
 TWILIO_PHONE_NUMBER=
+AUTH_TEST_PHONES=                  # Comma-separated E.164 list, bypasses Twilio Lookup VoIP filter
+TRIAL_DURATION_SECONDS=            # Optional override for Pro trial length (seconds). Default 1209600 (14d)
 ```
 
 ### Supabase Edge Functions (set via Supabase dashboard secrets)
@@ -539,7 +553,9 @@ EXPO_ACCESS_TOKEN=                # For sending push notifications via Expo
 - **First acceptor is NOT automatically assigned.** Multiple workers can accept. The manager selects. First acceptor only gets auto-assigned if manager ignores for 30 minutes.
 - **No editing callouts.** Once posted, a callout cannot be edited. Manager must cancel and repost.
 - **Roles are flat.** No hierarchy. "Cook" covers all cooking roles. No sub-roles.
-- **One phone = one account.** A worker can belong to multiple locations under the same phone number.
+- **One phone = one account.** A worker can belong to multiple locations under the same phone number. A manager can own multiple locations, each billed independently (one location can be `free`, another `pro`, another `business`).
+- **One trial per phone, lifetime.** `profiles.trial_used_at` is stamped when the phone creates its first location and never reset. Deleting that first location does not restore the trial. Subsequent locations the same phone creates start on `free`/`active`, no trial.
+- **Deleting a location cancels its Stripe subscription but never deletes any account.** FK cascades wipe all per-location data (members, roles, callouts, logs, tickets); `profiles` and `auth.users` are untouched. There is no user-initiated account deletion flow.
 - **Worker deleted from location does NOT delete their account.** Only unlinks them from that location.
 - **industry_type field on locations.** Always set it. Never hardcode "restaurant" logic in queries. This keeps the backend multi-vertical.
 - **OTP is via Supabase Auth (which uses Twilio).** Same Twilio account handles OTP + notification SMS.

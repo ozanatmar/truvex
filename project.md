@@ -60,6 +60,7 @@ Truvex is a React Native (Expo) mobile app for restaurant shift callout manageme
 | `STRIPE_BUSINESS_ANNUAL_PRICE_ID` | Stripe price ID for $79/mo Business plan (billed $948/yr) |
 | `NEXT_PUBLIC_APP_URL` | Web app base URL (e.g. `https://truvex.app`) |
 | `TWILIO_ACCOUNT_SID` | Twilio account SID — also used by `/api/auth/check-phone` + `/api/auth/send-otp` for Twilio Lookup (VoIP filter) |
+| `AUTH_TEST_PHONES` | Comma-separated E.164 numbers that bypass the Twilio Lookup VoIP filter. Must match the test phones configured in Supabase Auth dashboard (they aren't real lines so Lookup rejects them). |
 | `TWILIO_AUTH_TOKEN` | Twilio auth token |
 | `TWILIO_PHONE_NUMBER` | Twilio sending number |
 | `IS_LAUNCHED` | Launch gate. `"true"` serves the live marketing site; anything else (unset/empty/`"false"`) redirects all marketing surfaces to `/pre-launch`. |

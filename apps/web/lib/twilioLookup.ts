@@ -53,3 +53,17 @@ export function isBlockedLineType(t: PhoneLineType): boolean {
   if (!t) return false;
   return t === 'nonFixedVoip' || t === 'fixedVoip' || t === 'voicemail' || t === 'pager';
 }
+
+// Supabase Auth's configured test phones bypass Twilio entirely (the OTP is
+// fixed in the dashboard). Twilio Lookup would reject them since they're not
+// real lines, so we exempt them from the VoIP gate. AUTH_TEST_PHONES is a
+// comma-separated list of E.164 numbers.
+export function isTestPhone(e164: string): boolean {
+  const raw = process.env.AUTH_TEST_PHONES;
+  if (!raw) return false;
+  return raw
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .includes(e164);
+}

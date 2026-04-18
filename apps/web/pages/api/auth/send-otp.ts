@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabase, supabaseAdmin } from '../../../lib/supabase';
-import { lookupPhone, isBlockedLineType } from '../../../lib/twilioLookup';
+import { lookupPhone, isBlockedLineType, isTestPhone } from '../../../lib/twilioLookup';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).end();
@@ -9,7 +9,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!phone) return res.status(400).json({ error: 'Phone required' });
 
   // VoIP/virtual-number gate for first-time phones only — returning users skip
-  // the Lookup to avoid the charge on every login.
+  // the Lookup to avoid the charge on every login. Supabase's configured test
+  // phones also skip it (they aren't real lines).
   const { data: existing } = await supabaseAdmin
     .schema('truvex')
     .from('profiles')
@@ -17,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .eq('phone', phone)
     .maybeSingle();
 
-  if (!existing) {
+  if (!existing && !isTestPhone(phone)) {
     const lookup = await lookupPhone(phone);
     if (lookup && lookup.valid === false) {
       return res.status(400).json({ error: 'That phone number looks invalid. Double-check and try again.' });

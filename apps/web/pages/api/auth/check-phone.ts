@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
-import { lookupPhone, isBlockedLineType } from '../../../lib/twilioLookup';
+import { lookupPhone, isBlockedLineType, isTestPhone } from '../../../lib/twilioLookup';
 
 // Gatekeeper for new signups: blocks virtual/VoIP numbers from minting fresh
 // Pro trials. Returning users (profile already exists) skip the Twilio Lookup
@@ -12,6 +12,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!phone || typeof phone !== 'string' || !phone.startsWith('+')) {
     return res.status(400).json({ error: 'E.164 phone required' });
   }
+
+  if (isTestPhone(phone)) return res.status(200).json({ ok: true, test: true });
 
   const { data: existing } = await supabaseAdmin
     .schema('truvex')

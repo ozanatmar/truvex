@@ -35,7 +35,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'No subscription found' });
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://truvex.app';
+  const rawAppUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://truvex.app';
+  const appUrl = /^https?:\/\//i.test(rawAppUrl) ? rawAppUrl : `https://${rawAppUrl}`;
 
   const session = await stripe.billingPortal.sessions.create({
     customer: location.stripe_customer_id,

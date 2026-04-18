@@ -68,13 +68,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
+    const rawAppUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://truvex.app';
+    const appUrl = /^https?:\/\//i.test(rawAppUrl) ? rawAppUrl : `https://${rawAppUrl}`;
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
       subscription_data: trialEnd ? { trial_end: trialEnd } : undefined,
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://truvex.app'}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://truvex.app'}/upgrade?location_id=${location_id}&tier=${tier}&billing=${billingType}`,
+      success_url: `${appUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${appUrl}/upgrade?location_id=${location_id}&tier=${tier}&billing=${billingType}`,
       metadata: { location_id, tier, billing: billingType },
     });
 

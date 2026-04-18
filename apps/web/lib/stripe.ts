@@ -9,7 +9,7 @@ export const PLANS = {
     name: 'Pro',
     workerLimit: 30,
     priceIds: {
-      monthly: process.env.STRIPE_PRO_PRICE_ID ?? '',
+      monthly: process.env.STRIPE_PRO_MONTHLY_PRICE_ID ?? '',
       annual: process.env.STRIPE_PRO_ANNUAL_PRICE_ID ?? '',
     },
   },
@@ -17,7 +17,7 @@ export const PLANS = {
     name: 'Business',
     workerLimit: null, // unlimited
     priceIds: {
-      monthly: process.env.STRIPE_BUSINESS_PRICE_ID ?? '',
+      monthly: process.env.STRIPE_BUSINESS_MONTHLY_PRICE_ID ?? '',
       annual: process.env.STRIPE_BUSINESS_ANNUAL_PRICE_ID ?? '',
     },
   },

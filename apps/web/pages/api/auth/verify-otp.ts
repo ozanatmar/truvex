@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const billingType: BillingType = billing === 'annual' ? 'annual' : 'monthly';
     const priceId = plan.priceIds[billingType];
     if (!priceId) {
-      const envVar = `STRIPE_${tier.toUpperCase()}${billingType === 'annual' ? '_ANNUAL' : ''}_PRICE_ID`;
+      const envVar = `STRIPE_${tier.toUpperCase()}_${billingType === 'annual' ? 'ANNUAL' : 'MONTHLY'}_PRICE_ID`;
       return res.status(500).json({ error: `Missing ${envVar} env var on the server` });
     }
 

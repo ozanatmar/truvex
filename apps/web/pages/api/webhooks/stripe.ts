@@ -64,10 +64,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const priceId = sub.items.data[0]?.price?.id ?? '';
 
       const priceTierMap: Record<string, string> = {
-        [process.env.STRIPE_PRO_PRICE_ID          ?? '__']: 'pro',
-        [process.env.STRIPE_PRO_ANNUAL_PRICE_ID   ?? '__']: 'pro',
-        [process.env.STRIPE_BUSINESS_PRICE_ID     ?? '__']: 'business',
-        [process.env.STRIPE_BUSINESS_ANNUAL_PRICE_ID ?? '__']: 'business',
+        [process.env.STRIPE_PRO_MONTHLY_PRICE_ID      ?? '__']: 'pro',
+        [process.env.STRIPE_PRO_ANNUAL_PRICE_ID       ?? '__']: 'pro',
+        [process.env.STRIPE_BUSINESS_MONTHLY_PRICE_ID ?? '__']: 'business',
+        [process.env.STRIPE_BUSINESS_ANNUAL_PRICE_ID  ?? '__']: 'business',
       };
 
       const tierFromPrice = priceTierMap[priceId];

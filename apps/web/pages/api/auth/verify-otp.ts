@@ -5,6 +5,7 @@ import { stripe, PLANS, PlanTier, BillingType } from '../../../lib/stripe';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).end();
 
+  try {
   const { phone, token, location_id, tier, billing } = req.body;
 
   if (!phone || !token) return res.status(400).json({ error: 'Missing fields' });
@@ -81,4 +82,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   res.status(200).json({ ok: true });
+  } catch (err) {
+    console.error('verify-otp handler error:', err);
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: message });
+  }
 }

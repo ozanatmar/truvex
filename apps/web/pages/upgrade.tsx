@@ -84,20 +84,28 @@ export default function UpgradePage({ locationId, tier, initialBilling, location
     setError('');
     const e164 = toE164(phone);
 
-    const res = await fetch('/api/auth/verify-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: e164, token: otp, location_id: locationId, tier, billing }),
-    });
+    try {
+      const res = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: e164, token: otp, location_id: locationId, tier, billing }),
+      });
 
-    if (res.ok) {
-      const { checkoutUrl } = await res.json();
-      window.location.href = checkoutUrl;
-    } else {
-      const data = await res.json();
-      setError(data.error ?? 'Invalid code');
+      const text = await res.text();
+      let data: any = null;
+      try { data = text ? JSON.parse(text) : null; } catch { /* non-JSON (likely HTML error page) */ }
+
+      if (res.ok && data?.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+        return;
+      }
+
+      setError(data?.error ?? `Verification failed (${res.status})`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   // When phone was prefilled from the app, fire OTP automatically on mount

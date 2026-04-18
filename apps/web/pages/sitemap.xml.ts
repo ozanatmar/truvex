@@ -38,19 +38,32 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
   const { data: posts } = await supabase
     .schema('truvex')
     .from('blog_posts')
-    .select('slug, published_at')
+    .select('slug, published_at, updated_at')
     .order('published_at', { ascending: false });
 
   const today = new Date().toISOString().split('T')[0];
+  const now = Date.now();
+  const DAY_MS = 24 * 60 * 60 * 1000;
   const entries: SitemapEntry[] = [];
 
   // Blog index + posts are always indexable (allowlisted through the launch gate)
   entries.push({ loc: `${SITE_URL}/blog`, lastmod: today, changefreq: 'weekly', priority: '0.8' });
   for (const p of posts ?? []) {
+    // Recency-aware changefreq: fresh posts still get edits and recrawls,
+    // older posts stabilize. Lines up with how Google actually recrawls
+    // long-tail content.
+    const published = new Date(p.published_at as string).getTime();
+    const ageDays = (now - published) / DAY_MS;
+    let changefreq: SitemapEntry['changefreq'];
+    if (ageDays < 30) changefreq = 'weekly';
+    else if (ageDays < 180) changefreq = 'monthly';
+    else changefreq = 'yearly';
+
+    const lastmodSource = (p.updated_at as string | null) ?? (p.published_at as string);
     entries.push({
       loc: `${SITE_URL}/blog/${p.slug}`,
-      lastmod: (p.published_at as string).split('T')[0],
-      changefreq: 'monthly',
+      lastmod: lastmodSource.split('T')[0],
+      changefreq,
       priority: '0.7',
     });
   }

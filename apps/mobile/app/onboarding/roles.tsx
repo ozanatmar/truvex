@@ -18,9 +18,29 @@ const DEFAULT_ROLES = ['Cook', 'Server', 'Bartender', 'Host', 'Cashier', 'Dishwa
 export default function RolesScreen() {
   const router = useRouter();
   const { activeLocation } = useStore();
-  const [roles, setRoles] = useState<string[]>(DEFAULT_ROLES);
+  const [roles, setRoles] = useState<string[]>([]);
+  const [originalRoles, setOriginalRoles] = useState<string[]>([]);
   const [newRole, setNewRole] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingRoles, setLoadingRoles] = useState(true);
+
+  // create-location already seeds DEFAULT_ROLES on location insert, so load
+  // the actual DB state on mount. This makes going back/forward idempotent
+  // and preserves any add/remove edits the user has made.
+  useEffect(() => {
+    if (!activeLocation) return;
+    supabase
+      .schema('truvex').from('roles')
+      .select('name')
+      .eq('location_id', activeLocation.id)
+      .then(({ data }) => {
+        const names = (data ?? []).map((r: any) => r.name as string);
+        const initial = names.length > 0 ? names : DEFAULT_ROLES;
+        setRoles(initial);
+        setOriginalRoles(names);
+        setLoadingRoles(false);
+      });
+  }, [activeLocation]);
 
   function removeRole(role: string) {
     setRoles((prev) => prev.filter((r) => r !== role));
@@ -37,17 +57,35 @@ export default function RolesScreen() {
     if (!activeLocation || roles.length === 0) return;
     setLoading(true);
 
-    const { error } = await supabase.schema('truvex').from('roles').insert(
-      roles.map((name) => ({ location_id: activeLocation.id, name }))
-    );
+    const toAdd = roles.filter((r) => !originalRoles.includes(r));
+    const toRemove = originalRoles.filter((r) => !roles.includes(r));
 
-    setLoading(false);
-
-    if (error) {
-      Alert.alert('Error', error.message);
-      return;
+    if (toRemove.length > 0) {
+      const { error: delError } = await supabase
+        .schema('truvex').from('roles')
+        .delete()
+        .eq('location_id', activeLocation.id)
+        .in('name', toRemove);
+      if (delError) {
+        setLoading(false);
+        Alert.alert('Error', delError.message);
+        return;
+      }
     }
 
+    if (toAdd.length > 0) {
+      const { error: insError } = await supabase
+        .schema('truvex').from('roles')
+        .insert(toAdd.map((name) => ({ location_id: activeLocation.id, name })));
+      if (insError) {
+        setLoading(false);
+        Alert.alert('Error', insError.message);
+        return;
+      }
+    }
+
+    setOriginalRoles(roles);
+    setLoading(false);
     router.push('/onboarding/first-worker');
   }
 
@@ -66,7 +104,10 @@ export default function RolesScreen() {
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
-        {roles.map((role) => (
+        {loadingRoles && (
+          <ActivityIndicator color="#0E7C7B" style={{ marginTop: 16 }} />
+        )}
+        {!loadingRoles && roles.map((role) => (
           <View key={role} style={styles.roleRow}>
             <Text style={styles.roleName}>{role}</Text>
             <TouchableOpacity onPress={() => removeRole(role)}>

@@ -3,6 +3,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
 import BlogLayout from '../../components/BlogLayout';
+import { optimizedImageUrl } from '../../lib/image';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,6 +16,7 @@ interface PostSummary {
   description: string | null;
   published_at: string;
   hero_image_url: string | null;
+  hero_image_alt: string | null;
 }
 
 export default function BlogIndex({ posts }: { posts: PostSummary[] }) {
@@ -110,11 +112,11 @@ export default function BlogIndex({ posts }: { posts: PostSummary[] }) {
                   {post.hero_image_url && (
                     <div style={styles.thumbWrap}>
                       <img
-                        src={post.hero_image_url}
-                        alt={post.title}
+                        src={optimizedImageUrl(post.hero_image_url, { width: 400, height: 267, resize: 'cover' }) ?? post.hero_image_url}
+                        alt={post.hero_image_alt && post.hero_image_alt.trim().length > 0 ? post.hero_image_alt : post.title}
                         style={styles.thumbImg}
-                        width={320}
-                        height={213}
+                        width={400}
+                        height={267}
                         loading="lazy"
                       />
                     </div>
@@ -147,7 +149,7 @@ export const getServerSideProps: GetServerSideProps = async () => {
   const { data, error } = await supabase
     .schema('truvex')
     .from('blog_posts')
-    .select('title, slug, description, published_at, hero_image_url')
+    .select('title, slug, description, published_at, hero_image_url, hero_image_alt')
     .order('published_at', { ascending: false })
     .limit(50);
 

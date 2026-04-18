@@ -153,6 +153,9 @@ export default function BlogPostPage({ post, related }: Props) {
   // resize on-the-fly via Supabase transforms and fall back to the static OG.
   const ogImage = optimizedImageUrl(post.hero_image_url, { width: 1200, height: 630, resize: 'cover' })
     ?? 'https://truvex.app/og-image.jpg';
+  // Hero shown in the article at ~760px content width, so ask Supabase for
+  // a right-sized 1200w variant (covers retina) instead of serving 1536w.
+  const heroDisplayUrl = optimizedImageUrl(post.hero_image_url, { width: 1200 }) ?? post.hero_image_url;
   const publishedIso = new Date(post.published_at).toISOString();
   const modifiedIso = post.updated_at
     ? new Date(post.updated_at).toISOString()
@@ -230,6 +233,9 @@ export default function BlogPostPage({ post, related }: Props) {
         <meta name="twitter:image" content={ogImage} />
         <meta name="twitter:image:alt" content={heroAlt} />
         <link rel="canonical" href={url} />
+        {heroDisplayUrl && (
+          <link rel="preload" as="image" href={heroDisplayUrl} fetchPriority="high" />
+        )}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -261,15 +267,16 @@ export default function BlogPostPage({ post, related }: Props) {
               )}
             </header>
 
-            {post.hero_image_url && (
+            {heroDisplayUrl && (
               <div style={styles.heroWrap}>
                 <img
-                  src={post.hero_image_url}
+                  src={heroDisplayUrl}
                   alt={heroAlt}
                   style={styles.heroImg}
-                  width={1536}
-                  height={1024}
+                  width={1200}
+                  height={800}
                   loading="eager"
+                  fetchPriority="high"
                 />
               </div>
             )}

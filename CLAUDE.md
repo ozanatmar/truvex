@@ -542,6 +542,7 @@ TWILIO_ACCOUNT_SID=
 TWILIO_AUTH_TOKEN=
 TWILIO_PHONE_NUMBER=
 EXPO_ACCESS_TOKEN=                # For sending push notifications via Expo
+STRIPE_SECRET_KEY=                # Used by delete-location to cancel Stripe subs when a location is deleted
 ```
 
 ---

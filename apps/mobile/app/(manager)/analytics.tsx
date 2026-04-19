@@ -13,6 +13,7 @@ import * as ExpoLinking from 'expo-linking';
 import { useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../lib/store';
+import LoadingOverlay from '../../components/LoadingOverlay';
 
 const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL ?? 'https://truvex-web.vercel.app';
 
@@ -42,6 +43,7 @@ export default function AnalyticsScreen() {
   const { activeLocation, session } = useStore();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [upgrading, setUpgrading] = useState(false);
 
   const tier = (activeLocation as any)?.subscription_tier ?? 'free';
   const isGated = tier !== 'business';
@@ -144,37 +146,46 @@ export default function AnalyticsScreen() {
           </View>
           <TouchableOpacity
             style={styles.gateButton}
+            disabled={upgrading}
             onPress={async () => {
               if (!session || !activeLocation) return;
-              const returnTo = ExpoLinking.createURL('/upgrade-success');
-              const res = await fetch(`${WEB_URL}/api/subscription/checkout`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  Authorization: `Bearer ${session.access_token}`,
-                },
-                body: JSON.stringify({
-                  location_id: activeLocation.id,
-                  tier: 'business',
-                  billing: 'monthly',
-                  return_to: returnTo,
-                }),
-              });
-              const data = await res.json().catch(() => null);
-              if (!res.ok || !data?.checkoutUrl) {
-                Alert.alert('Upgrade failed', data?.error ?? `Server error (${res.status})`);
-                return;
+              setUpgrading(true);
+              try {
+                const returnTo = ExpoLinking.createURL('/upgrade-success');
+                const res = await fetch(`${WEB_URL}/api/subscription/checkout`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${session.access_token}`,
+                  },
+                  body: JSON.stringify({
+                    location_id: activeLocation.id,
+                    tier: 'business',
+                    billing: 'monthly',
+                    return_to: returnTo,
+                  }),
+                });
+                const data = await res.json().catch(() => null);
+                if (!res.ok || !data?.checkoutUrl) {
+                  Alert.alert('Upgrade failed', data?.error ?? `Server error (${res.status})`);
+                  return;
+                }
+                await WebBrowser.openBrowserAsync(data.checkoutUrl, {
+                  toolbarColor: '#0f0f1a',
+                  controlsColor: '#F5853F',
+                  presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
+                });
+              } catch (err) {
+                Alert.alert('Upgrade failed', err instanceof Error ? err.message : 'Network error');
+              } finally {
+                setUpgrading(false);
               }
-              await WebBrowser.openBrowserAsync(data.checkoutUrl, {
-                toolbarColor: '#0f0f1a',
-                controlsColor: '#F5853F',
-                presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
-              });
             }}
           >
             <Text style={styles.gateButtonText}>Upgrade to Business →</Text>
           </TouchableOpacity>
         </View>
+        <LoadingOverlay visible={upgrading} message="Opening Stripe checkout…" />
       </View>
     );
   }

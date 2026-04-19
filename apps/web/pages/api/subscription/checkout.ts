@@ -59,10 +59,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .eq('id', location_id);
     }
 
-    // Carry over remaining trial days; Stripe requires >=48h ahead or omit.
+    // Carry over remaining trial days — Pro only. Business tier is never
+    // discounted and must charge from day one. Stripe requires >=48h ahead
+    // or the trial_end is rejected; if less, omit it (subscription starts
+    // billing immediately, which is acceptable for a near-expired trial).
     const MIN_TRIAL_END_MS_AHEAD = 48 * 60 * 60 * 1000;
     let trialEnd: number | undefined;
-    if (location.subscription_status === 'trialing' && location.trial_ends_at) {
+    if (tier === 'pro' && location.subscription_status === 'trialing' && location.trial_ends_at) {
       const trialEndsAt = new Date(location.trial_ends_at).getTime();
       if (trialEndsAt - Date.now() >= MIN_TRIAL_END_MS_AHEAD) {
         trialEnd = Math.floor(trialEndsAt / 1000);

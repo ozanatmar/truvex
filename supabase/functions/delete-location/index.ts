@@ -44,26 +44,35 @@ serve(async (req) => {
     if (locErr || !location) return json({ error: 'Location not found' }, 404);
     if (location.manager_id !== user.id) return json({ error: 'Forbidden' }, 403);
 
-    // Cancel any active Stripe subscription. Immediate cancel — manager is
-    // deleting the location, they've accepted the loss of remaining period.
+    // Cancel any active Stripe subscription before deleting the row.
+    // Immediate cancel — manager is deleting the location, they've accepted
+    // the loss of remaining period. If Stripe cancellation fails we MUST
+    // abort the DB delete, otherwise the customer keeps getting charged with
+    // no way for us to correlate the subscription back to a location.
     if (location.stripe_subscription_id) {
       const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
-      if (stripeKey) {
-        try {
-          const res = await fetch(
-            `https://api.stripe.com/v1/subscriptions/${location.stripe_subscription_id}`,
-            {
-              method: 'DELETE',
-              headers: { Authorization: `Bearer ${stripeKey}` },
-            },
-          );
-          if (!res.ok) {
-            const body = await res.text();
-            console.error('Stripe cancel failed:', res.status, body);
-          }
-        } catch (err) {
-          console.error('Stripe cancel threw:', err);
+      if (!stripeKey) {
+        console.error('STRIPE_SECRET_KEY is not set — cannot cancel', location.stripe_subscription_id);
+        return json({ error: 'Server misconfigured: Stripe key missing' }, 500);
+      }
+      try {
+        const res = await fetch(
+          `https://api.stripe.com/v1/subscriptions/${location.stripe_subscription_id}`,
+          {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${stripeKey}` },
+          },
+        );
+        // 404 means the subscription no longer exists in Stripe (already
+        // cancelled/deleted elsewhere) — safe to proceed with DB delete.
+        if (!res.ok && res.status !== 404) {
+          const body = await res.text();
+          console.error('Stripe cancel failed:', res.status, body);
+          return json({ error: `Stripe cancel failed (${res.status}): ${body}` }, 502);
         }
+      } catch (err) {
+        console.error('Stripe cancel threw:', err);
+        return json({ error: `Stripe cancel threw: ${String(err)}` }, 502);
       }
     }
 

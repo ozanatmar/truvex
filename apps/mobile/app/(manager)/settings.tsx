@@ -16,6 +16,7 @@ import { supabase } from '../../lib/supabase';
 import { useStore } from '../../lib/store';
 import { Location } from '../../types/database';
 import TutorialModal from '../../components/TutorialModal';
+import LoadingOverlay from '../../components/LoadingOverlay';
 import { useRouter } from 'expo-router';
 
 const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL ?? 'https://truvex.app';
@@ -441,6 +442,20 @@ export default function ManagerSettingsScreen() {
     </ScrollView>
 
     <TutorialModal visible={showTutorial} role="manager" onClose={() => setShowTutorial(false)} />
+    <LoadingOverlay
+      visible={subActionLoading !== null || deleting}
+      message={
+        deleting
+          ? 'Deleting restaurant…'
+          : subActionLoading === 'upgrade'
+          ? 'Opening Stripe checkout…'
+          : subActionLoading === 'manage'
+          ? 'Opening billing portal…'
+          : subActionLoading === 'cancel'
+          ? 'Cancelling subscription…'
+          : undefined
+      }
+    />
     </>
   );
 }

@@ -6,6 +6,7 @@ import {
   ScrollView,
   ActivityIndicator,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as ExpoLinking from 'expo-linking';
@@ -38,7 +39,7 @@ interface Stats {
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function AnalyticsScreen() {
-  const { activeLocation, profile } = useStore();
+  const { activeLocation, session } = useStore();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -144,10 +145,27 @@ export default function AnalyticsScreen() {
           <TouchableOpacity
             style={styles.gateButton}
             onPress={async () => {
-              const phone = profile?.phone ?? '';
+              if (!session || !activeLocation) return;
               const returnTo = ExpoLinking.createURL('/upgrade-success');
-              const url = `${WEB_URL}/upgrade?location_id=${activeLocation?.id}&tier=business&phone=${encodeURIComponent(phone)}&return_to=${encodeURIComponent(returnTo)}`;
-              await WebBrowser.openBrowserAsync(url, {
+              const res = await fetch(`${WEB_URL}/api/subscription/checkout`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({
+                  location_id: activeLocation.id,
+                  tier: 'business',
+                  billing: 'monthly',
+                  return_to: returnTo,
+                }),
+              });
+              const data = await res.json().catch(() => null);
+              if (!res.ok || !data?.checkoutUrl) {
+                Alert.alert('Upgrade failed', data?.error ?? `Server error (${res.status})`);
+                return;
+              }
+              await WebBrowser.openBrowserAsync(data.checkoutUrl, {
                 toolbarColor: '#0f0f1a',
                 controlsColor: '#F5853F',
                 presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,

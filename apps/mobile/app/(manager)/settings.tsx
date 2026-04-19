@@ -69,6 +69,7 @@ export default function ManagerSettingsScreen() {
   const [location, setLocation] = useState<Location | null>(activeLocation);
   const [showTutorial, setShowTutorial] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [subActionLoading, setSubActionLoading] = useState<'upgrade' | 'manage' | 'cancel' | null>(null);
 
   const refresh = useCallback(async () => {
     if (!activeLocation) return;
@@ -96,26 +97,69 @@ export default function ManagerSettingsScreen() {
   }, [refresh]);
 
   async function handleUpgrade(tier: 'pro' | 'business') {
-    const phone = profile?.phone ?? '';
-    // Expo Go registers an exp:// scheme; standalone/dev-client uses truvex://.
-    // ExpoLinking.createURL picks the right one for the current runtime.
-    const returnTo = ExpoLinking.createURL('/upgrade-success');
-    const url = `${WEB_URL}/upgrade?location_id=${location?.id}&tier=${tier}&phone=${encodeURIComponent(phone)}&return_to=${encodeURIComponent(returnTo)}`;
-    await WebBrowser.openBrowserAsync(url, {
-      toolbarColor: '#0f0f1a',
-      controlsColor: '#F5853F',
-      presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
-    });
+    if (!session || !location) return;
+    setSubActionLoading('upgrade');
+    try {
+      // Expo Go registers an exp:// scheme; standalone/dev-client uses truvex://.
+      const returnTo = ExpoLinking.createURL('/upgrade-success');
+      const res = await fetch(`${WEB_URL}/api/subscription/checkout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          location_id: location.id,
+          tier,
+          billing: 'monthly',
+          return_to: returnTo,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.checkoutUrl) {
+        Alert.alert('Upgrade failed', data?.error ?? `Server error (${res.status})`);
+        return;
+      }
+      await WebBrowser.openBrowserAsync(data.checkoutUrl, {
+        toolbarColor: '#0f0f1a',
+        controlsColor: '#F5853F',
+        presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
+      });
+    } catch (err) {
+      Alert.alert('Upgrade failed', err instanceof Error ? err.message : 'Network error');
+    } finally {
+      setSubActionLoading(null);
+    }
   }
 
-  function handleManageSubscription() {
-    const phone = profile?.phone ?? '';
-    const returnTo = ExpoLinking.createURL('/upgrade-success');
-    const url = `${WEB_URL}/subscription?location_id=${location?.id}&phone=${encodeURIComponent(phone)}&return_to=${encodeURIComponent(returnTo)}`;
-    Linking.openURL(url);
+  async function handleManageSubscription() {
+    if (!session || !location) return;
+    setSubActionLoading('manage');
+    try {
+      const returnTo = ExpoLinking.createURL('/upgrade-success');
+      const res = await fetch(`${WEB_URL}/api/subscription/portal`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ location_id: location.id, return_to: returnTo }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.portalUrl) {
+        Alert.alert('Could not open billing portal', data?.error ?? `Server error (${res.status})`);
+        return;
+      }
+      await Linking.openURL(data.portalUrl);
+    } catch (err) {
+      Alert.alert('Could not open billing portal', err instanceof Error ? err.message : 'Network error');
+    } finally {
+      setSubActionLoading(null);
+    }
   }
 
   function handleCancelSubscription() {
+    if (!session || !location) return;
     Alert.alert(
       'Cancel subscription?',
       'You will keep access until the end of your current billing period.',
@@ -124,11 +168,29 @@ export default function ManagerSettingsScreen() {
         {
           text: 'Cancel',
           style: 'destructive',
-          onPress: () => {
-            const phone = profile?.phone ?? '';
-            const returnTo = ExpoLinking.createURL('/upgrade-success');
-            const url = `${WEB_URL}/subscription/cancel?location_id=${location?.id}&phone=${encodeURIComponent(phone)}&return_to=${encodeURIComponent(returnTo)}`;
-            Linking.openURL(url);
+          onPress: async () => {
+            setSubActionLoading('cancel');
+            try {
+              const res = await fetch(`${WEB_URL}/api/subscription/cancel`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({ location_id: location.id }),
+              });
+              const data = await res.json().catch(() => null);
+              if (!res.ok || !data?.ok) {
+                Alert.alert('Could not cancel', data?.error ?? `Server error (${res.status})`);
+                return;
+              }
+              await refresh();
+              Alert.alert('Subscription cancelled', "You'll keep access until the end of your current billing period.");
+            } catch (err) {
+              Alert.alert('Could not cancel', err instanceof Error ? err.message : 'Network error');
+            } finally {
+              setSubActionLoading(null);
+            }
           },
         },
       ]
@@ -277,13 +339,21 @@ export default function ManagerSettingsScreen() {
         {/* Action buttons */}
         {(status === 'trialing' || status === 'expired' || tier === 'free') && (
           <View style={styles.upgradeCards}>
-            <TouchableOpacity style={styles.upgradeCard} onPress={() => handleUpgrade('pro')}>
+            <TouchableOpacity
+              style={styles.upgradeCard}
+              onPress={() => handleUpgrade('pro')}
+              disabled={subActionLoading !== null}
+            >
               <Text style={styles.upgradePlan}>Pro</Text>
               <Text style={styles.upgradePrice}>$49 / mo</Text>
               <Text style={styles.upgradeFeature}>Up to 30 workers</Text>
               <Text style={styles.upgradeFeature}>Push + SMS notifications</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.upgradeCard, styles.upgradeCardPro]} onPress={() => handleUpgrade('business')}>
+            <TouchableOpacity
+              style={[styles.upgradeCard, styles.upgradeCardPro]}
+              onPress={() => handleUpgrade('business')}
+              disabled={subActionLoading !== null}
+            >
               <Text style={styles.upgradePlan}>Business</Text>
               <Text style={styles.upgradePrice}>$99 / mo</Text>
               <Text style={styles.upgradeFeature}>Unlimited workers</Text>
@@ -294,26 +364,54 @@ export default function ManagerSettingsScreen() {
         )}
 
         {status === 'active' && tier !== 'business' && (
-          <TouchableOpacity style={styles.actionButton} onPress={() => handleUpgrade('business')}>
-            <Text style={styles.actionButtonText}>Upgrade to Business</Text>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => handleUpgrade('business')}
+            disabled={subActionLoading !== null}
+          >
+            {subActionLoading === 'upgrade' ? (
+              <ActivityIndicator color="#0E7C7B" />
+            ) : (
+              <Text style={styles.actionButtonText}>Upgrade to Business</Text>
+            )}
           </TouchableOpacity>
         )}
 
         {(status === 'active' || status === 'past_due') && (
-          <TouchableOpacity style={styles.actionButton} onPress={handleManageSubscription}>
-            <Text style={styles.actionButtonText}>Manage payment method</Text>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleManageSubscription}
+            disabled={subActionLoading !== null}
+          >
+            {subActionLoading === 'manage' ? (
+              <ActivityIndicator color="#0E7C7B" />
+            ) : (
+              <Text style={styles.actionButtonText}>Manage payment method</Text>
+            )}
           </TouchableOpacity>
         )}
 
         {status === 'active' && (
-          <TouchableOpacity onPress={handleCancelSubscription}>
-            <Text style={styles.cancelSubText}>Cancel subscription</Text>
+          <TouchableOpacity onPress={handleCancelSubscription} disabled={subActionLoading !== null}>
+            {subActionLoading === 'cancel' ? (
+              <ActivityIndicator color="#ef4444" style={{ paddingVertical: 8 }} />
+            ) : (
+              <Text style={styles.cancelSubText}>Cancel subscription</Text>
+            )}
           </TouchableOpacity>
         )}
 
         {status === 'cancelled' && (
-          <TouchableOpacity style={styles.actionButton} onPress={handleManageSubscription}>
-            <Text style={styles.actionButtonText}>Reactivate subscription</Text>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleManageSubscription}
+            disabled={subActionLoading !== null}
+          >
+            {subActionLoading === 'manage' ? (
+              <ActivityIndicator color="#0E7C7B" />
+            ) : (
+              <Text style={styles.actionButtonText}>Reactivate subscription</Text>
+            )}
           </TouchableOpacity>
         )}
       </View>

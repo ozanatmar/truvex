@@ -24,41 +24,24 @@ export default function RestaurantScreen() {
     if (!name.trim() || !session) return;
     setLoading(true);
 
-    // Check if this manager already used a trial on a previous location
-    const { data: existingLocations } = await supabase
-      .schema('truvex').from('locations')
-      .select('id, trial_ends_at')
-      .eq('manager_id', session.user.id);
+    // Trial-once-per-phone is gated by profiles.trial_used_at inside the
+    // create-location Edge Function. Never insert locations directly from
+    // the client — scanning existing rows for trial_ends_at doesn't detect
+    // a trial that was already consumed and whose location was deleted.
+    const { data, error: fnError } = await supabase.functions.invoke('create-location', {
+      body: { name: name.trim(), industry_type: 'restaurant' },
+    });
 
-    const hasUsedTrial = existingLocations?.some(
-      (loc: any) => loc.trial_ends_at !== null
-    ) ?? false;
-
-    // Only grant a trial to managers who haven't had one before
-    const trialEndsAt = hasUsedTrial
-      ? null
-      : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
-
-    const { data: location, error: locError } = await supabase
-      .schema('truvex').from('locations')
-      .insert({
-        name: name.trim(),
-        industry_type: 'restaurant',
-        manager_id: session.user.id,
-        subscription_tier: 'free',
-        subscription_status: hasUsedTrial ? 'expired' : 'trialing',
-        trial_ends_at: trialEndsAt,
-      })
-      .select()
-      .single();
-
-    if (locError || !location) {
+    const location = (data as { location?: any } | null)?.location;
+    if (fnError || !location) {
       setLoading(false);
-      Alert.alert('Error', locError?.message ?? 'Could not create location');
+      const message = fnError?.message ?? (data as any)?.error ?? 'Could not create location';
+      Alert.alert('Error', message);
       return;
     }
 
-    // Add manager as location_member
+    // Edge function seeds default roles but does not add the manager to
+    // location_members — do that here so the session sees the new location.
     await supabase.schema('truvex').from('location_members').insert({
       location_id: location.id,
       user_id: session.user.id,

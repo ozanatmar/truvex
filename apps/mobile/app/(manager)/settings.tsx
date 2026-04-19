@@ -121,11 +121,13 @@ export default function ManagerSettingsScreen() {
         Alert.alert('Upgrade failed', data?.error ?? `Server error (${res.status})`);
         return;
       }
-      await WebBrowser.openBrowserAsync(data.checkoutUrl, {
-        toolbarColor: '#0f0f1a',
-        controlsColor: '#F5853F',
-        presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
-      });
+      // openAuthSessionAsync auto-dismisses the in-app browser when the
+      // returnTo deep link fires. We're already on Settings, so no navigation
+      // is needed — the sheet closes and the user is back where they started.
+      const result = await WebBrowser.openAuthSessionAsync(data.checkoutUrl, returnTo);
+      if (result.type === 'success') {
+        await refresh();
+      }
     } catch (err) {
       Alert.alert('Upgrade failed', err instanceof Error ? err.message : 'Network error');
     } finally {
@@ -151,7 +153,10 @@ export default function ManagerSettingsScreen() {
         Alert.alert('Could not open billing portal', data?.error ?? `Server error (${res.status})`);
         return;
       }
-      await Linking.openURL(data.portalUrl);
+      const result = await WebBrowser.openAuthSessionAsync(data.portalUrl, returnTo);
+      if (result.type === 'success') {
+        await refresh();
+      }
     } catch (err) {
       Alert.alert('Could not open billing portal', err instanceof Error ? err.message : 'Network error');
     } finally {

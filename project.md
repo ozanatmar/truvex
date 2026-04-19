@@ -171,7 +171,7 @@ When the location already has a `stripe_subscription_id`, the app calls `POST /a
 
 ### Cancel and reactivate
 - **Cancel** (`POST /api/subscription/cancel`): sets `cancel_at_period_end=true` on the Stripe sub and writes `subscription_status='cancelled'` to the DB. The tier stays on the paid plan until `subscription_period_end`.
-- **Reactivate** is only available via the Stripe Customer Portal (no native button). The portal flips `cancel_at_period_end=false`. The `customer.subscription.updated` webhook mirrors this back to the DB as `subscription_status='active'` (or `'trialing'`).
+- **Reactivate** (`POST /api/subscription/reactivate`): native button in Settings (shown when `status='cancelled'`). Flips `cancel_at_period_end=false` and writes the current Stripe status (`'active'` / `'trialing'` / `'past_due'`) back to the DB. The Stripe Customer Portal is still available via "Manage payment method" for card updates but is no longer required to reactivate.
 - Terminal expiry is handled by `customer.subscription.deleted` — flips tier to `free`, status to `expired`, and clears Stripe IDs.
 
 ### Stripe webhook events (`/api/webhooks/stripe`)
@@ -254,5 +254,6 @@ Shown during app bootstrap (session check → profile → location lookup). Impl
 | `/subscription/cancel` | Cancel subscription (OTP auth → cancel at period end) |
 | `/subscription/return` | Post-portal landing → deep link to `truvex://subscription-updated` |
 | `/api/subscription/change-plan` | Mid-subscription price swap with proration (called from native app, not browser) |
+| `/api/subscription/reactivate` | Clear `cancel_at_period_end` on the Stripe sub (called from native app, not browser) |
 | `/pre-launch` | Pre-launch holding page with waitlist email capture. Shown when `IS_LAUNCHED` is not `"true"`; served via middleware redirect. `noindex`. |
 | `/coming-soon` | Emergency maintenance page. Shown when `MAINTENANCE_MODE=true`; takes precedence over the launch gate. `noindex`. |

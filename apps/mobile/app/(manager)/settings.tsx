@@ -70,7 +70,7 @@ export default function ManagerSettingsScreen() {
   const [location, setLocation] = useState<Location | null>(activeLocation);
   const [showTutorial, setShowTutorial] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [subActionLoading, setSubActionLoading] = useState<'upgrade' | 'manage' | 'cancel' | null>(null);
+  const [subActionLoading, setSubActionLoading] = useState<'upgrade' | 'manage' | 'cancel' | 'reactivate' | null>(null);
 
   const refresh = useCallback(async () => {
     if (!activeLocation) return;
@@ -221,6 +221,44 @@ export default function ManagerSettingsScreen() {
     } finally {
       setSubActionLoading(null);
     }
+  }
+
+  function handleReactivateSubscription() {
+    if (!session || !location) return;
+    Alert.alert(
+      'Reactivate subscription?',
+      'Your subscription will continue renewing at the end of the current billing period.',
+      [
+        { text: 'Keep cancelled', style: 'cancel' },
+        {
+          text: 'Reactivate',
+          onPress: async () => {
+            setSubActionLoading('reactivate');
+            try {
+              const res = await fetch(`${WEB_URL}/api/subscription/reactivate`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({ location_id: location.id }),
+              });
+              const data = await res.json().catch(() => null);
+              if (!res.ok || !data?.ok) {
+                Alert.alert('Could not reactivate', data?.error ?? `Server error (${res.status})`);
+                return;
+              }
+              await refresh();
+              Alert.alert('Subscription reactivated', 'Your plan will renew at the end of the current billing period.');
+            } catch (err) {
+              Alert.alert('Could not reactivate', err instanceof Error ? err.message : 'Network error');
+            } finally {
+              setSubActionLoading(null);
+            }
+          },
+        },
+      ]
+    );
   }
 
   function handleCancelSubscription() {
@@ -486,10 +524,10 @@ export default function ManagerSettingsScreen() {
         {status === 'cancelled' && (
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={handleManageSubscription}
+            onPress={handleReactivateSubscription}
             disabled={subActionLoading !== null}
           >
-            {subActionLoading === 'manage' ? (
+            {subActionLoading === 'reactivate' ? (
               <ActivityIndicator color="#0E7C7B" />
             ) : (
               <Text style={styles.actionButtonText}>Reactivate subscription</Text>

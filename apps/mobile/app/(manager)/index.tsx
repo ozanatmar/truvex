@@ -143,13 +143,8 @@ export default function ManagerHomeScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => allLocations.length > 1 && setShowPicker(true)}
-          activeOpacity={allLocations.length > 1 ? 0.7 : 1}
-        >
-          <Text style={styles.locationName}>
-            {activeLocation?.name}{allLocations.length > 1 ? ' ▾' : ''}
-          </Text>
+        <TouchableOpacity onPress={() => setShowPicker(true)} activeOpacity={0.7}>
+          <Text style={styles.locationName}>{activeLocation?.name} ▾</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.postButton}

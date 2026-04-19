@@ -113,16 +113,20 @@ export default function ManagerHomeScreen() {
     : null;
   const periodEnd = loc?.subscription_period_end ? new Date(loc.subscription_period_end) : null;
   const inGracePeriod = subStatus === 'cancelled' && periodEnd !== null && periodEnd.getTime() > Date.now();
+  // Stripe honors the unused trial days as trial_end on the new subscription,
+  // so a subscribed manager stays in status='trialing' until the first charge.
+  // Treat any location with stripe_subscription_id as subscribed — no upsell.
+  const isSubscribed = !!loc?.stripe_subscription_id;
 
   const showBanner =
-    subStatus === 'trialing' ||
+    (subStatus === 'trialing' && !isSubscribed) ||
     subStatus === 'past_due' ||
     subStatus === 'expired' ||
     subStatus === 'cancelled' ||
-    (tier === 'free' && subStatus !== 'cancelled');
+    (tier === 'free' && !isSubscribed && subStatus !== 'cancelled');
   let bannerText = '';
   let bannerColor = '#f59e0b';
-  if (subStatus === 'trialing' && trialDays !== null) {
+  if (subStatus === 'trialing' && !isSubscribed && trialDays !== null) {
     bannerText = trialDays > 0 ? `Trial — ${trialDays}d left · Tap Settings to upgrade` : 'Trial ended · Tap Settings to upgrade';
   } else if (subStatus === 'past_due') {
     bannerText = 'Payment failed · Update in Settings';

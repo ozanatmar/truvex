@@ -252,6 +252,11 @@ export default function ManagerSettingsScreen() {
   const trialRemaining = formatTrialRemaining(loc?.trial_ends_at);
   const trialEnded = trialRemaining === 'ended';
   const periodEnd = loc?.subscription_period_end;
+  // Subscribing during the free trial carries the remaining trial days over
+  // to Stripe, so the subscription sits at status='trialing' until the first
+  // charge. Key on stripe_subscription_id to distinguish "trialing + paid"
+  // from "trialing + still on free trial" — the UI diverges sharply.
+  const isSubscribed = !!loc?.stripe_subscription_id;
 
   const planLabel = tier === 'business' ? 'Business' : tier === 'pro' ? 'Pro' : 'Free';
   const planColor = tier === 'business' ? '#10b981' : tier === 'pro' ? '#0E7C7B' : '#6b7280';
@@ -289,7 +294,7 @@ export default function ManagerSettingsScreen() {
             </View>
           </View>
 
-          {status === 'trialing' && trialRemaining !== null && (
+          {status === 'trialing' && !isSubscribed && trialRemaining !== null && (
             <>
               <Divider />
               <Row
@@ -307,6 +312,18 @@ export default function ManagerSettingsScreen() {
                     Your Pro trial has ended. Subscribe to restore notifications.
                   </Text>
                 )}
+              </View>
+            </>
+          )}
+
+          {status === 'trialing' && isSubscribed && (
+            <>
+              <Divider />
+              <Row label="Billing starts" value={formatDate(loc?.trial_ends_at)} />
+              <View style={styles.trialNotice}>
+                <Text style={styles.trialText}>
+                  You're subscribed. Your remaining trial days are free — billing starts automatically on {formatDate(loc?.trial_ends_at)}.
+                </Text>
               </View>
             </>
           )}
@@ -343,7 +360,7 @@ export default function ManagerSettingsScreen() {
         </View>
 
         {/* Action buttons */}
-        {(status === 'trialing' || status === 'expired' || tier === 'free') && (
+        {!isSubscribed && (status === 'trialing' || status === 'expired' || tier === 'free') && (
           <View style={styles.upgradeCards}>
             <TouchableOpacity
               style={styles.upgradeCard}
@@ -369,7 +386,7 @@ export default function ManagerSettingsScreen() {
           </View>
         )}
 
-        {status === 'active' && tier !== 'business' && (
+        {isSubscribed && tier !== 'business' && (status === 'active' || status === 'trialing') && (
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => handleUpgrade('business')}
@@ -383,7 +400,7 @@ export default function ManagerSettingsScreen() {
           </TouchableOpacity>
         )}
 
-        {(status === 'active' || status === 'past_due') && (
+        {(isSubscribed || status === 'past_due') && (
           <TouchableOpacity
             style={styles.actionButton}
             onPress={handleManageSubscription}
@@ -397,7 +414,7 @@ export default function ManagerSettingsScreen() {
           </TouchableOpacity>
         )}
 
-        {status === 'active' && (
+        {isSubscribed && (status === 'active' || status === 'trialing') && (
           <TouchableOpacity onPress={handleCancelSubscription} disabled={subActionLoading !== null}>
             {subActionLoading === 'cancel' ? (
               <ActivityIndicator color="#ef4444" style={{ paddingVertical: 8 }} />

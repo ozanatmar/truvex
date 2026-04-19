@@ -63,14 +63,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const periodEnd = (sub as any).current_period_end
         ?? (sub as any).items?.data?.[0]?.current_period_end;
 
+      const isTrialing = sub.status === 'trialing';
       const { error, data } = await supabaseAdmin
         .schema('truvex')
         .from('locations')
         .update({
           subscription_tier: tier,
-          subscription_status: sub.status === 'trialing' ? 'trialing' : 'active',
+          subscription_status: isTrialing ? 'trialing' : 'active',
           stripe_subscription_id: sub.id,
           subscription_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
+          // A direct-paid subscription (e.g. Business picked during the 14-day
+          // free trial) starts with sub.status='active' — clear the carried-over
+          // trial_ends_at so the trial UI never renders over a paid plan.
+          ...(isTrialing ? {} : { trial_ends_at: null }),
         })
         .eq('id', locationId)
         .select();
@@ -157,6 +162,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         await updateLocationSubscription(customerId, {
           subscription_status: 'active',
           subscription_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+          // First paid invoice means the trial (if any) is over — clear the
+          // trial_ends_at so the settings UI stops rendering the trial block.
+          trial_ends_at: null,
         });
       }
       break;

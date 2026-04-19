@@ -81,18 +81,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // charges immediately — "want Business now? you're paying now."
     const endTrialNow = sub.status === 'trialing';
 
-    // Replace the single price item. proration_behavior defaults to
-    // 'create_prorations' which issues credit/charge lines on the next invoice.
-    // billing_cycle_anchor='unchanged' keeps the existing renewal date so the
-    // user isn't reset to a fresh cycle on upgrade. payment_behavior
-    // 'error_if_incomplete' makes the API call fail (so we don't flip the DB)
-    // if the card is declined when the trial is ended here.
-    const updated = await stripe.subscriptions.update(location.stripe_subscription_id, {
+    // Replace the single price item. proration_behavior='create_prorations'
+    // issues credit/charge lines for the unused portion of the current plan.
+    // When ending a trial, Stripe rejects billing_cycle_anchor='unchanged'
+    // because the anchor was the trial_end itself — let Stripe re-anchor to
+    // now. Outside a trial, keep the anchor so the renewal date is preserved.
+    // payment_behavior='error_if_incomplete' fails the API call on a declined
+    // card so we never flip the DB for an unfunded upgrade.
+    const updateParams: Parameters<typeof stripe.subscriptions.update>[1] = {
       items: [{ id: currentItem.id, price: targetPriceId }],
       proration_behavior: 'create_prorations',
-      billing_cycle_anchor: 'unchanged',
-      ...(endTrialNow ? { trial_end: 'now' as const, payment_behavior: 'error_if_incomplete' as const } : {}),
-    });
+    };
+    if (endTrialNow) {
+      updateParams.trial_end = 'now';
+      updateParams.payment_behavior = 'error_if_incomplete';
+    } else {
+      updateParams.billing_cycle_anchor = 'unchanged';
+    }
+    const updated = await stripe.subscriptions.update(location.stripe_subscription_id, updateParams);
 
     // Webhook customer.subscription.updated / invoice.payment_succeeded will
     // mirror back to the DB, but write here too so the UI reflects the change

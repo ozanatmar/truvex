@@ -25,6 +25,11 @@ function useAuthGuard() {
 
     const inAuth = segments[0] === '(auth)';
     const inOnboarding = segments[0] === 'onboarding';
+    // upgrade-success is the deep-link landing page after Stripe checkout /
+    // portal / cancel. It has its own useEffect that replaces to settings once
+    // the location row is refreshed. If the guard intercepts first it bounces
+    // the user to the manager home instead of settings.
+    const inPostSubscription = segments[0] === 'upgrade-success';
 
     if (!session) {
       if (!inAuth) router.replace('/(auth)/');
@@ -32,7 +37,7 @@ function useAuthGuard() {
     }
 
     if (memberType === 'manager') {
-      if (!inOnboarding && segments[0] !== '(manager)') {
+      if (!inOnboarding && !inPostSubscription && segments[0] !== '(manager)') {
         router.replace('/(manager)/');
       }
     } else if (memberType === 'worker') {

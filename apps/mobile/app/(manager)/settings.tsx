@@ -99,8 +99,35 @@ export default function ManagerSettingsScreen() {
 
   async function handleUpgrade(tier: 'pro' | 'business') {
     if (!session || !location) return;
+    const alreadySubscribed = !!(location as any).stripe_subscription_id;
     setSubActionLoading('upgrade');
     try {
+      // Mid-subscription plan change: update the existing Stripe sub in place
+      // so Stripe prorates the unused portion of the current plan. Routing
+      // this through /checkout would create a second subscription and double
+      // bill. Cadence (monthly vs annual) is preserved server-side.
+      if (alreadySubscribed) {
+        const res = await fetch(`${WEB_URL}/api/subscription/change-plan`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ location_id: location.id, tier }),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.ok) {
+          Alert.alert('Upgrade failed', data?.error ?? `Server error (${res.status})`);
+          return;
+        }
+        await refresh();
+        Alert.alert(
+          'Plan changed',
+          `You're now on ${tier === 'business' ? 'Business' : 'Pro'}. Your next invoice will credit any unused time from your previous plan.`,
+        );
+        return;
+      }
+
       // Expo Go registers an exp:// scheme; standalone/dev-client uses truvex://.
       const returnTo = ExpoLinking.createURL('/upgrade-success');
       const res = await fetch(`${WEB_URL}/api/subscription/checkout`, {

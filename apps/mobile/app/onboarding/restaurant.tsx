@@ -28,20 +28,35 @@ export default function RestaurantScreen() {
     // create-location Edge Function. Never insert locations directly from
     // the client — scanning existing rows for trial_ends_at doesn't detect
     // a trial that was already consumed and whose location was deleted.
-    // Pass the user JWT explicitly: functions.invoke can send the anon key
-    // instead of the session token on a freshly-signed-in client, which the
-    // Edge Function rejects as 401.
-    const { data, error: fnError } = await supabase.functions.invoke('create-location', {
-      body: { name: name.trim(), industry_type: 'restaurant' },
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
-    });
-
-    const location = (data as { location?: any } | null)?.location;
-    if (fnError || !location) {
+    // Use fetch directly rather than supabase.functions.invoke so the user
+    // JWT is the one-and-only Authorization header (invoke was leaking the
+    // anon key through → 401 on getUser(token)).
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
+    const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+    let data: any = null;
+    let status = 0;
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/create-location`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: anonKey,
+        },
+        body: JSON.stringify({ name: name.trim(), industry_type: 'restaurant' }),
+      });
+      status = res.status;
+      data = await res.json().catch(() => null);
+    } catch (err) {
       setLoading(false);
-      const message = fnError?.message ?? (data as any)?.error ?? 'Could not create location';
+      Alert.alert('Error', 'Network error — please try again.');
+      return;
+    }
+
+    const location = data?.location;
+    if (status < 200 || status >= 300 || !location) {
+      setLoading(false);
+      const message = data?.error ?? `Could not create location (HTTP ${status})`;
       Alert.alert('Error', message);
       return;
     }

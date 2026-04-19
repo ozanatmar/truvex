@@ -33,6 +33,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).send(`Webhook Error: ${err}`);
   }
 
+  console.log(
+    `[stripe-webhook] ${event.type} id=${event.id} ` +
+      `priceIdsConfigured={pro_m:${!!process.env.STRIPE_PRO_MONTHLY_PRICE_ID},` +
+      `pro_a:${!!process.env.STRIPE_PRO_ANNUAL_PRICE_ID},` +
+      `biz_m:${!!process.env.STRIPE_BUSINESS_MONTHLY_PRICE_ID},` +
+      `biz_a:${!!process.env.STRIPE_BUSINESS_ANNUAL_PRICE_ID}}`,
+  );
+
   switch (event.type) {
     // Checkout completed — first subscription created
     case 'checkout.session.completed': {
@@ -40,20 +48,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const locationId = session.metadata?.location_id;
       const tier = session.metadata?.tier;
 
-      if (locationId && tier && session.subscription) {
-        // Retrieve full subscription to get period_end and status
-        const sub = await stripe.subscriptions.retrieve(session.subscription as string);
+      console.log(
+        `[stripe-webhook] checkout.session.completed locationId=${locationId} tier=${tier} subscription=${session.subscription} mode=${session.mode}`,
+      );
 
-        await supabaseAdmin
-          .schema('truvex')
-          .from('locations')
-          .update({
-            subscription_tier: tier,
-            subscription_status: sub.status === 'trialing' ? 'trialing' : 'active',
-            stripe_subscription_id: sub.id,
-            subscription_period_end: new Date(sub.current_period_end * 1000).toISOString(),
-          })
-          .eq('id', locationId);
+      if (!locationId || !tier || !session.subscription) {
+        console.warn(
+          '[stripe-webhook] checkout.session.completed missing fields — skipping DB update',
+        );
+        break;
+      }
+
+      const sub = await stripe.subscriptions.retrieve(session.subscription as string);
+      const periodEnd = (sub as any).current_period_end
+        ?? (sub as any).items?.data?.[0]?.current_period_end;
+
+      const { error, data } = await supabaseAdmin
+        .schema('truvex')
+        .from('locations')
+        .update({
+          subscription_tier: tier,
+          subscription_status: sub.status === 'trialing' ? 'trialing' : 'active',
+          stripe_subscription_id: sub.id,
+          subscription_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
+        })
+        .eq('id', locationId)
+        .select();
+
+      if (error) {
+        console.error('[stripe-webhook] checkout.session.completed update error:', error);
+      } else {
+        console.log(
+          `[stripe-webhook] checkout.session.completed updated ${data?.length ?? 0} row(s) tier=${tier}`,
+        );
       }
       break;
     }
@@ -73,15 +100,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const tierFromPrice = priceTierMap[priceId];
       const isLive = ['active', 'trialing'].includes(sub.status);
 
+      console.log(
+        `[stripe-webhook] customer.subscription.updated sub=${sub.id} priceId=${priceId} tierFromPrice=${tierFromPrice} status=${sub.status} isLive=${isLive}`,
+      );
+
       // Only update tier while the subscription is live AND the price is known.
       // Keeps the paid tier during cancel_at_period_end grace period (still active).
       // customer.subscription.deleted owns the terminal flip to 'free'.
       if (isLive && tierFromPrice) {
-        await supabaseAdmin
+        const { error, data } = await supabaseAdmin
           .schema('truvex')
           .from('locations')
           .update({ subscription_tier: tierFromPrice, stripe_subscription_id: sub.id })
-          .eq('stripe_customer_id', customerId);
+          .eq('stripe_customer_id', customerId)
+          .select();
+
+        if (error) {
+          console.error('[stripe-webhook] customer.subscription.updated error:', error);
+        } else {
+          console.log(
+            `[stripe-webhook] customer.subscription.updated set tier=${tierFromPrice} on ${data?.length ?? 0} row(s)`,
+          );
+        }
+      } else {
+        console.log(
+          `[stripe-webhook] customer.subscription.updated skipped (isLive=${isLive}, tierFromPrice=${tierFromPrice})`,
+        );
       }
       break;
     }

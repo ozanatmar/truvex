@@ -9,6 +9,10 @@ const corsHeaders = {
 const DEFAULT_ROLES = ['Cook', 'Server', 'Bartender', 'Host', 'Cashier', 'Dishwasher', 'Manager'];
 const DEFAULT_TRIAL_SECONDS = 14 * 24 * 60 * 60;
 
+// verify_jwt is disabled at the gateway because the platform gateway cannot
+// validate ES256-signed user access tokens from the newer asymmetric signing
+// keys. Auth is enforced here via supabase.auth.getUser(token) instead — any
+// missing or invalid bearer token returns 401 before any DB work happens.
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });

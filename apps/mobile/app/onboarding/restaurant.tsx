@@ -28,8 +28,14 @@ export default function RestaurantScreen() {
     // create-location Edge Function. Never insert locations directly from
     // the client — scanning existing rows for trial_ends_at doesn't detect
     // a trial that was already consumed and whose location was deleted.
+    // Pass the user JWT explicitly: functions.invoke can send the anon key
+    // instead of the session token on a freshly-signed-in client, which the
+    // Edge Function rejects as 401.
     const { data, error: fnError } = await supabase.functions.invoke('create-location', {
       body: { name: name.trim(), industry_type: 'restaurant' },
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
     });
 
     const location = (data as { location?: any } | null)?.location;

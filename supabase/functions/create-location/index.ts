@@ -45,17 +45,50 @@ serve(async (req) => {
       });
     }
 
-    // One-time Pro trial per phone account. trial_used_at on the profile is the
-    // gate — not the number of locations, not a flag on the location row.
-    const { data: profile } = await supabase
+    // Profile must exist before we claim the trial. If handle_new_user hasn't
+    // finished on a fresh signup (or the row was wiped), fail loudly instead
+    // of silently handing out a trial the stamp won't persist.
+    const { data: profile, error: profileErr } = await supabase
       .schema('truvex')
       .from('profiles')
-      .select('trial_used_at')
+      .select('id')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
-    const trialEligible = !profile?.trial_used_at;
+    if (profileErr) {
+      return new Response(JSON.stringify({ error: `Profile lookup failed: ${profileErr.message}` }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (!profile) {
+      return new Response(JSON.stringify({ error: 'Profile not found — please sign out and sign in again.' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Atomic one-time Pro trial. UPDATE returns a row iff trial_used_at was
+    // still NULL when this statement ran — row count is the source of truth.
+    // Do not replace with read-then-write: a 0-row UPDATE is silent there and
+    // lets the same phone re-trial on every new location.
     const now = new Date();
+    const { data: claimed, error: claimErr } = await supabase
+      .schema('truvex')
+      .from('profiles')
+      .update({ trial_used_at: now.toISOString() })
+      .eq('id', user.id)
+      .is('trial_used_at', null)
+      .select('id');
+
+    if (claimErr) {
+      return new Response(JSON.stringify({ error: `Trial claim failed: ${claimErr.message}` }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const trialEligible = (claimed?.length ?? 0) > 0;
     const trialEndsAt = trialEligible
       ? new Date(now.getTime() + DEFAULT_TRIAL_SECONDS * 1000).toISOString()
       : null;
@@ -75,19 +108,20 @@ serve(async (req) => {
       .single();
 
     if (locationError || !location) {
+      // Release the trial we just claimed so the user can retry. Equality
+      // guard ensures we only clear our own stamp, not someone else's.
+      if (trialEligible) {
+        await supabase
+          .schema('truvex')
+          .from('profiles')
+          .update({ trial_used_at: null })
+          .eq('id', user.id)
+          .eq('trial_used_at', now.toISOString());
+      }
       return new Response(JSON.stringify({ error: locationError?.message ?? 'Failed to create location' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
-    }
-
-    // Burn the trial for this phone account.
-    if (trialEligible) {
-      await supabase
-        .schema('truvex')
-        .from('profiles')
-        .update({ trial_used_at: now.toISOString() })
-        .eq('id', user.id);
     }
 
     const roleRows = DEFAULT_ROLES.map((roleName) => ({

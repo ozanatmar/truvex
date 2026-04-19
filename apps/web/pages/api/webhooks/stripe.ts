@@ -71,14 +71,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       };
 
       const tierFromPrice = priceTierMap[priceId];
-      const isActive = ['active', 'trialing'].includes(sub.status);
-      const newTier = isActive && tierFromPrice ? tierFromPrice : 'free';
+      const isLive = ['active', 'trialing'].includes(sub.status);
 
-      await supabaseAdmin
-        .schema('truvex')
-        .from('locations')
-        .update({ subscription_tier: newTier, stripe_subscription_id: sub.id })
-        .eq('stripe_customer_id', customerId);
+      // Only update tier while the subscription is live AND the price is known.
+      // Keeps the paid tier during cancel_at_period_end grace period (still active).
+      // customer.subscription.deleted owns the terminal flip to 'free'.
+      if (isLive && tierFromPrice) {
+        await supabaseAdmin
+          .schema('truvex')
+          .from('locations')
+          .update({ subscription_tier: tierFromPrice, stripe_subscription_id: sub.id })
+          .eq('stripe_customer_id', customerId);
+      }
       break;
     }
 

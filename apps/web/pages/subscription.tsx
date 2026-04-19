@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { GetServerSideProps } from 'next';
 import Head from 'next/head';
 
@@ -6,12 +6,27 @@ interface Props {
   locationId: string;
   mode: 'manage' | 'cancel';
   returnTo: string;
+  prefillPhone: string;
 }
 
-export default function SubscriptionPage({ locationId, mode, returnTo }: Props) {
-  const [phone, setPhone] = useState('');
+function toE164(phone: string): string {
+  if (phone.startsWith('+')) return phone;
+  return `+1${phone.replace(/\D/g, '')}`;
+}
+
+function formatDisplayPhone(phone: string): string {
+  const e164 = toE164(phone);
+  if (e164.startsWith('+1') && e164.length === 12) {
+    const digits = e164.slice(2);
+    return `+1 (${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  return e164;
+}
+
+export default function SubscriptionPage({ locationId, mode, returnTo, prefillPhone }: Props) {
+  const [phone, setPhone] = useState(prefillPhone);
   const [otp, setOtp] = useState('');
-  const [step, setStep] = useState<'phone' | 'otp' | 'done'>('phone');
+  const [step, setStep] = useState<'phone' | 'otp' | 'done'>(prefillPhone ? 'otp' : 'phone');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [cancelled, setCancelled] = useState(false);
@@ -22,7 +37,7 @@ export default function SubscriptionPage({ locationId, mode, returnTo }: Props) 
   async function handleSendOtp() {
     setLoading(true);
     setError('');
-    const e164 = `+1${phone.replace(/\D/g, '')}`;
+    const e164 = toE164(phone);
 
     const res = await fetch('/api/auth/send-otp', {
       method: 'POST',
@@ -36,13 +51,20 @@ export default function SubscriptionPage({ locationId, mode, returnTo }: Props) 
     } else {
       const data = await res.json();
       setError(data.error ?? 'Failed to send code');
+      setStep('phone');
     }
   }
+
+  useEffect(() => {
+    if (prefillPhone) {
+      handleSendOtp();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleVerify() {
     setLoading(true);
     setError('');
-    const e164 = `+1${phone.replace(/\D/g, '')}`;
+    const e164 = toE164(phone);
 
     if (mode === 'manage') {
       const res = await fetch('/api/subscription/portal', {
@@ -127,7 +149,19 @@ export default function SubscriptionPage({ locationId, mode, returnTo }: Props) 
             </>
           ) : (
             <>
-              <p style={styles.label}>Enter the 6-digit code we texted you</p>
+              <p style={styles.label}>
+                Enter the 6-digit code sent to{' '}
+                <strong style={{ color: '#fff' }}>{formatDisplayPhone(phone)}</strong>
+              </p>
+              {mode === 'cancel' && (
+                <p style={{ ...styles.label, color: '#f59e0b' }}>
+                  Your subscription will be cancelled at the end of your current billing period.
+                  You'll keep full access until then.
+                </p>
+              )}
+              {loading && !otp && (
+                <p style={{ ...styles.label, color: '#7A8899' }}>Sending code…</p>
+              )}
               <input
                 style={{ ...styles.input, textAlign: 'center', fontSize: 24, letterSpacing: 8 }}
                 type="text"
@@ -142,10 +176,10 @@ export default function SubscriptionPage({ locationId, mode, returnTo }: Props) 
                 onClick={handleVerify}
                 disabled={loading || otp.length !== 6}
               >
-                {loading ? 'Please wait…' : ctaLabel}
+                {loading && otp.length === 6 ? 'Please wait…' : ctaLabel}
               </button>
-              <button style={styles.ghostButton} onClick={() => setStep('phone')}>
-                Back
+              <button style={styles.ghostButton} onClick={() => { setStep('phone'); setOtp(''); setError(''); }}>
+                ← Use a different number
               </button>
             </>
           )}
@@ -223,12 +257,14 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
 
   const rawReturnTo = typeof ctx.query.return_to === 'string' ? ctx.query.return_to : '';
   const returnTo = RETURN_TO_PATTERN.test(rawReturnTo) ? rawReturnTo : 'truvex://subscription-updated';
+  const prefillPhone = typeof ctx.query.phone === 'string' ? ctx.query.phone : '';
 
   return {
     props: {
       locationId: location_id as string,
       mode,
       returnTo,
+      prefillPhone,
     },
   };
 };

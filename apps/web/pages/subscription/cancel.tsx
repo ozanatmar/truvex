@@ -12,12 +12,14 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
 
   const rawReturnTo = typeof ctx.query.return_to === 'string' ? ctx.query.return_to : '';
   const returnTo = RETURN_TO_PATTERN.test(rawReturnTo) ? rawReturnTo : 'truvex://subscription-updated';
+  const prefillPhone = typeof ctx.query.phone === 'string' ? ctx.query.phone : '';
 
   return {
     props: {
       locationId: location_id as string,
       mode: 'cancel',
       returnTo,
+      prefillPhone,
     },
   };
 };

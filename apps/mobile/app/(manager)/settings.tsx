@@ -109,8 +109,9 @@ export default function ManagerSettingsScreen() {
   }
 
   function handleManageSubscription() {
+    const phone = profile?.phone ?? '';
     const returnTo = ExpoLinking.createURL('/upgrade-success');
-    const url = `${WEB_URL}/subscription?location_id=${location?.id}&return_to=${encodeURIComponent(returnTo)}`;
+    const url = `${WEB_URL}/subscription?location_id=${location?.id}&phone=${encodeURIComponent(phone)}&return_to=${encodeURIComponent(returnTo)}`;
     Linking.openURL(url);
   }
 
@@ -124,8 +125,9 @@ export default function ManagerSettingsScreen() {
           text: 'Cancel',
           style: 'destructive',
           onPress: () => {
+            const phone = profile?.phone ?? '';
             const returnTo = ExpoLinking.createURL('/upgrade-success');
-            const url = `${WEB_URL}/subscription/cancel?location_id=${location?.id}&return_to=${encodeURIComponent(returnTo)}`;
+            const url = `${WEB_URL}/subscription/cancel?location_id=${location?.id}&phone=${encodeURIComponent(phone)}&return_to=${encodeURIComponent(returnTo)}`;
             Linking.openURL(url);
           },
         },

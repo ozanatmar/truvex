@@ -105,18 +105,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const tierFromPrice = priceTierMap[priceId];
       const isLive = ['active', 'trialing'].includes(sub.status);
 
+      // Mirror Stripe's cancel_at_period_end flag and status back to our DB.
+      // Required for Stripe-portal reactivations (flips cancel_at_period_end
+      // from true → false) to actually take effect in our UI. Without this,
+      // the DB stays 'cancelled' forever after a portal-side reactivate.
+      let newStatus: string | null = null;
+      if (sub.cancel_at_period_end) newStatus = 'cancelled';
+      else if (sub.status === 'active') newStatus = 'active';
+      else if (sub.status === 'trialing') newStatus = 'trialing';
+      else if (sub.status === 'past_due') newStatus = 'past_due';
+
       console.log(
-        `[stripe-webhook] customer.subscription.updated sub=${sub.id} priceId=${priceId} tierFromPrice=${tierFromPrice} status=${sub.status} isLive=${isLive}`,
+        `[stripe-webhook] customer.subscription.updated sub=${sub.id} priceId=${priceId} tierFromPrice=${tierFromPrice} status=${sub.status} cancel_at_period_end=${sub.cancel_at_period_end} newStatus=${newStatus} isLive=${isLive}`,
       );
 
       // Only update tier while the subscription is live AND the price is known.
       // Keeps the paid tier during cancel_at_period_end grace period (still active).
       // customer.subscription.deleted owns the terminal flip to 'free'.
       if (isLive && tierFromPrice) {
+        const update: Record<string, unknown> = {
+          subscription_tier: tierFromPrice,
+          stripe_subscription_id: sub.id,
+        };
+        if (newStatus) update.subscription_status = newStatus;
+
         const { error, data } = await supabaseAdmin
           .schema('truvex')
           .from('locations')
-          .update({ subscription_tier: tierFromPrice, stripe_subscription_id: sub.id })
+          .update(update)
           .eq('stripe_customer_id', customerId)
           .select();
 
@@ -124,7 +140,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           console.error('[stripe-webhook] customer.subscription.updated error:', error);
         } else {
           console.log(
-            `[stripe-webhook] customer.subscription.updated set tier=${tierFromPrice} on ${data?.length ?? 0} row(s)`,
+            `[stripe-webhook] customer.subscription.updated set tier=${tierFromPrice} status=${newStatus} on ${data?.length ?? 0} row(s)`,
           );
         }
       } else {

@@ -100,37 +100,66 @@ export default function ManagerSettingsScreen() {
   async function handleUpgrade(tier: 'pro' | 'business') {
     if (!session || !location) return;
     const alreadySubscribed = !!(location as any).stripe_subscription_id;
+
+    // Mid-subscription plan change: update the existing Stripe sub in place
+    // so Stripe prorates the unused portion of the current plan. Routing
+    // this through /checkout would create a second subscription and double
+    // bill. Cadence (monthly vs annual) is preserved server-side.
+    if (alreadySubscribed) {
+      const isTrialing = (location as any).subscription_status === 'trialing';
+      const planName = tier === 'business' ? 'Business' : 'Pro';
+      const addsMessage =
+        tier === 'business'
+          ? 'Business adds:\n• Unlimited workers (Pro is limited to 30)\n• Analytics dashboard\n\n'
+          : '';
+      const chargeMessage = isTrialing
+        ? `Upgrading now ends your free trial and your card will be charged for ${planName} immediately.`
+        : `Stripe will credit the unused portion of your current plan and charge you the ${planName} rate for the rest of your billing period.`;
+
+      Alert.alert(
+        `Upgrade to ${planName}?`,
+        `${addsMessage}${chargeMessage}`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Upgrade',
+            onPress: async () => {
+              setSubActionLoading('upgrade');
+              try {
+                const res = await fetch(`${WEB_URL}/api/subscription/change-plan`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${session.access_token}`,
+                  },
+                  body: JSON.stringify({ location_id: location.id, tier }),
+                });
+                const data = await res.json().catch(() => null);
+                if (!res.ok || !data?.ok) {
+                  Alert.alert('Upgrade failed', data?.error ?? `Server error (${res.status})`);
+                  return;
+                }
+                await refresh();
+                Alert.alert(
+                  'Plan changed',
+                  data.trialEnded
+                    ? `You're now on ${planName}. Your trial has ended and your card was charged with a proration credit applied.`
+                    : `You're now on ${planName}. Your next invoice will credit any unused time from your previous plan.`,
+                );
+              } catch (err) {
+                Alert.alert('Upgrade failed', err instanceof Error ? err.message : 'Network error');
+              } finally {
+                setSubActionLoading(null);
+              }
+            },
+          },
+        ]
+      );
+      return;
+    }
+
     setSubActionLoading('upgrade');
     try {
-      // Mid-subscription plan change: update the existing Stripe sub in place
-      // so Stripe prorates the unused portion of the current plan. Routing
-      // this through /checkout would create a second subscription and double
-      // bill. Cadence (monthly vs annual) is preserved server-side.
-      if (alreadySubscribed) {
-        const res = await fetch(`${WEB_URL}/api/subscription/change-plan`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ location_id: location.id, tier }),
-        });
-        const data = await res.json().catch(() => null);
-        if (!res.ok || !data?.ok) {
-          Alert.alert('Upgrade failed', data?.error ?? `Server error (${res.status})`);
-          return;
-        }
-        await refresh();
-        const planName = tier === 'business' ? 'Business' : 'Pro';
-        Alert.alert(
-          'Plan changed',
-          data.trialEnded
-            ? `You're now on ${planName}. Your trial has ended and your card was charged with a proration credit applied.`
-            : `You're now on ${planName}. Your next invoice will credit any unused time from your previous plan.`,
-        );
-        return;
-      }
-
       // Expo Go registers an exp:// scheme; standalone/dev-client uses truvex://.
       const returnTo = ExpoLinking.createURL('/upgrade-success');
       const res = await fetch(`${WEB_URL}/api/subscription/checkout`, {

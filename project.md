@@ -154,13 +154,48 @@ All tables live in the `truvex` schema. See `supabase/migrations/001_truvex_sche
 - Additional locations on the same phone: always `free`/`active`, no trial.
 - `expire-trials` Edge Function runs every minute via `pg_cron` — flips `trialing` locations past `trial_ends_at` with no `stripe_subscription_id` to `subscription_status='expired'`. Tier stays `free`.
 
-### Checkout
+### Checkout (first-time subscription — no existing `stripe_subscription_id`)
 1. Manager taps Upgrade → app opens browser to `https://truvex.app/upgrade?location_id=...&tier=...&phone=...`
 2. Web page prefills phone and auto-sends OTP (same Supabase account)
-3. On verify: creates Stripe Checkout session → redirects to Stripe. If the location still has ≥48h of trial remaining, it's carried over via `subscription_data.trial_end`; shorter windows bill immediately (Stripe requires ≥48h for `trial_end`).
+3. On verify: creates Stripe Checkout session → redirects to Stripe. Pro checkouts carry the remaining trial via `subscription_data.trial_end` (≥48h left; Stripe minimum). Business checkouts never carry a trial — they bill immediately.
 4. On payment: Stripe webhook hits `/api/webhooks/stripe` → updates `locations.subscription_tier` + status + `stripe_subscription_id`.
 5. Stripe success_url → `/success` → redirects to `truvex://upgrade-success`
 6. App deep link handler re-fetches location data
+
+### Mid-subscription plan change (Pro → Business)
+When the location already has a `stripe_subscription_id`, the app calls `POST /api/subscription/change-plan` instead of opening checkout. Routing through checkout would create a **second** Stripe subscription on the same customer and double-bill.
+- Server derives cadence (monthly/annual) from the current price so Pro annual → Business annual.
+- Swaps the single price item on the existing sub with `proration_behavior='create_prorations'`. Stripe credits the unused portion of Pro against the new Business rate.
+- If the sub is currently `trialing`, sets `trial_end='now'` and `payment_behavior='error_if_incomplete'` so the upgrade bills immediately — prevents a free 14-day Business run. Otherwise keeps `billing_cycle_anchor='unchanged'` to preserve the renewal date.
+- App shows a confirmation dialog listing what Business adds and whether the trial will end before firing the API call.
+
+### Cancel and reactivate
+- **Cancel** (`POST /api/subscription/cancel`): sets `cancel_at_period_end=true` on the Stripe sub and writes `subscription_status='cancelled'` to the DB. The tier stays on the paid plan until `subscription_period_end`.
+- **Reactivate** is only available via the Stripe Customer Portal (no native button). The portal flips `cancel_at_period_end=false`. The `customer.subscription.updated` webhook mirrors this back to the DB as `subscription_status='active'` (or `'trialing'`).
+- Terminal expiry is handled by `customer.subscription.deleted` — flips tier to `free`, status to `expired`, and clears Stripe IDs.
+
+### Stripe webhook events (`/api/webhooks/stripe`)
+| Event | DB effect |
+|---|---|
+| `checkout.session.completed` | Sets tier, status (`trialing` or `active`), `stripe_subscription_id`, `subscription_period_end`. Clears `trial_ends_at` when the sub is not trialing. |
+| `customer.subscription.updated` | Mirrors status from `sub.cancel_at_period_end` (`cancelled`) or `sub.status` (`active` / `trialing` / `past_due`). Updates tier when a new price is on a live sub. |
+| `customer.subscription.deleted` | Tier → `free`, status → `expired`, clears `stripe_subscription_id` and `subscription_period_end`. |
+| `invoice.payment_succeeded` | Status → `active`, refreshes `subscription_period_end`, clears `trial_ends_at` (first paid invoice ends the trial). Skips when `billing_reason='subscription_create'` (handled by `checkout.session.completed`). |
+| `invoice.payment_failed` | Status → `past_due`. |
+| `customer.subscription.trial_will_end` | No-op (mobile app shows its own countdown). |
+
+### Plan-change flow matrix
+| # | From → To | Path | Notes |
+|---|---|---|---|
+| 1 | Free trial → Pro trial → Business | Checkout for Pro (trial carries via `trial_end`), then change-plan to Business | Ending trial on Business upgrade bills immediately |
+| 2 | Free trial → Business | Checkout for Business | No trial carry — Business checkouts bill on completion |
+| 3 | Pro trial → Free | Cancel subscription | Access continues to `subscription_period_end`, then `expired` |
+| 4 | Business → Pro | Not exposed in UI (intentional — avoids downgrade churn) | — |
+| 5 | Pro → Business | change-plan with proration | Preserves cadence (monthly/annual) |
+| 6 | Business → Free | Cancel subscription | Same as flow 3 |
+| 7 | Pro → Free | Cancel subscription | Same as flow 3 |
+
+**Worker count on downgrade:** existing workers are never auto-removed. The per-tier cap (`workerLimit()` in `apps/mobile/lib/subscription.ts` — free: 10, pro: 30, business: unlimited) only blocks **new** adds in `/(manager)/team/add`. Managers above the cap keep their current team and can remove workers manually to get under it.
 
 ### Deleting a restaurant
 - Manager → Settings → "Delete this restaurant" (destructive confirm) → calls `delete-location` Edge Function.
@@ -218,5 +253,6 @@ Shown during app bootstrap (session check → profile → location lookup). Impl
 | `/subscription` | Stripe Customer Portal redirect (OTP auth → portal) |
 | `/subscription/cancel` | Cancel subscription (OTP auth → cancel at period end) |
 | `/subscription/return` | Post-portal landing → deep link to `truvex://subscription-updated` |
+| `/api/subscription/change-plan` | Mid-subscription price swap with proration (called from native app, not browser) |
 | `/pre-launch` | Pre-launch holding page with waitlist email capture. Shown when `IS_LAUNCHED` is not `"true"`; served via middleware redirect. `noindex`. |
 | `/coming-soon` | Emergency maintenance page. Shown when `MAINTENANCE_MODE=true`; takes precedence over the launch gate. `noindex`. |

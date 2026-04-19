@@ -74,30 +74,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ ok: true, unchanged: true });
     }
 
+    // Upgrading during the Pro trial would otherwise give the user up to 14
+    // days of Business access for free (they can cancel before trial_end and
+    // pay nothing), because Stripe doesn't bill while a subscription is in
+    // trial. End the trial on upgrade so the proration invoice finalizes and
+    // charges immediately — "want Business now? you're paying now."
+    const endTrialNow = sub.status === 'trialing';
+
     // Replace the single price item. proration_behavior defaults to
     // 'create_prorations' which issues credit/charge lines on the next invoice.
     // billing_cycle_anchor='unchanged' keeps the existing renewal date so the
-    // user isn't reset to a fresh cycle on upgrade.
+    // user isn't reset to a fresh cycle on upgrade. payment_behavior
+    // 'error_if_incomplete' makes the API call fail (so we don't flip the DB)
+    // if the card is declined when the trial is ended here.
     const updated = await stripe.subscriptions.update(location.stripe_subscription_id, {
       items: [{ id: currentItem.id, price: targetPriceId }],
       proration_behavior: 'create_prorations',
       billing_cycle_anchor: 'unchanged',
+      ...(endTrialNow ? { trial_end: 'now' as const, payment_behavior: 'error_if_incomplete' as const } : {}),
     });
 
-    // Webhook customer.subscription.updated will mirror tier back to the DB,
-    // but update here too so the UI reflects the change immediately on return.
+    // Webhook customer.subscription.updated / invoice.payment_succeeded will
+    // mirror back to the DB, but write here too so the UI reflects the change
+    // immediately. If we ended the trial, flip status='active' and clear the
+    // trial_ends_at so the trial UI stops rendering.
+    const dbUpdate: Record<string, unknown> = {
+      subscription_tier: tier,
+      subscription_period_end: updated.current_period_end
+        ? new Date(updated.current_period_end * 1000).toISOString()
+        : null,
+    };
+    if (endTrialNow) {
+      dbUpdate.subscription_status = updated.status === 'active' ? 'active' : updated.status;
+      dbUpdate.trial_ends_at = null;
+    }
+
     await supabaseAdmin
       .schema('truvex')
       .from('locations')
-      .update({
-        subscription_tier: tier,
-        subscription_period_end: updated.current_period_end
-          ? new Date(updated.current_period_end * 1000).toISOString()
-          : null,
-      })
+      .update(dbUpdate)
       .eq('id', location_id);
 
-    return res.status(200).json({ ok: true, tier, billing: currentCadence });
+    return res.status(200).json({ ok: true, tier, billing: currentCadence, trialEnded: endTrialNow });
   } catch (err) {
     console.error('change-plan handler error:', err);
     const message = err instanceof Error ? err.message : String(err);

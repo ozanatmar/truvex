@@ -121,9 +121,12 @@ export default function ManagerSettingsScreen() {
           return;
         }
         await refresh();
+        const planName = tier === 'business' ? 'Business' : 'Pro';
         Alert.alert(
           'Plan changed',
-          `You're now on ${tier === 'business' ? 'Business' : 'Pro'}. Your next invoice will credit any unused time from your previous plan.`,
+          data.trialEnded
+            ? `You're now on ${planName}. Your trial has ended and your card was charged with a proration credit applied.`
+            : `You're now on ${planName}. Your next invoice will credit any unused time from your previous plan.`,
         );
         return;
       }

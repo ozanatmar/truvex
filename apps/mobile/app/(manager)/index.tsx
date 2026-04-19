@@ -111,8 +111,15 @@ export default function ManagerHomeScreen() {
   const trialDays = loc?.trial_ends_at
     ? Math.max(0, Math.ceil((new Date(loc.trial_ends_at).getTime() - Date.now()) / 86400000))
     : null;
+  const periodEnd = loc?.subscription_period_end ? new Date(loc.subscription_period_end) : null;
+  const inGracePeriod = subStatus === 'cancelled' && periodEnd !== null && periodEnd.getTime() > Date.now();
 
-  const showBanner = subStatus === 'trialing' || tier === 'free' || subStatus === 'expired' || subStatus === 'past_due';
+  const showBanner =
+    subStatus === 'trialing' ||
+    subStatus === 'past_due' ||
+    subStatus === 'expired' ||
+    subStatus === 'cancelled' ||
+    (tier === 'free' && subStatus !== 'cancelled');
   let bannerText = '';
   let bannerColor = '#f59e0b';
   if (subStatus === 'trialing' && trialDays !== null) {
@@ -120,6 +127,11 @@ export default function ManagerHomeScreen() {
   } else if (subStatus === 'past_due') {
     bannerText = 'Payment failed · Update in Settings';
     bannerColor = '#ef4444';
+  } else if (inGracePeriod) {
+    const endDate = periodEnd!.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    bannerText = `Cancelled — paid access until ${endDate}`;
+  } else if (subStatus === 'cancelled') {
+    bannerText = 'Subscription cancelled · Tap Settings to reactivate';
   } else if (tier === 'free' || subStatus === 'expired') {
     bannerText = 'Free plan — notifications off · Tap Settings to upgrade';
   }

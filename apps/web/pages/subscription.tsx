@@ -5,9 +5,10 @@ import Head from 'next/head';
 interface Props {
   locationId: string;
   mode: 'manage' | 'cancel';
+  returnTo: string;
 }
 
-export default function SubscriptionPage({ locationId, mode }: Props) {
+export default function SubscriptionPage({ locationId, mode, returnTo }: Props) {
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState<'phone' | 'otp' | 'done'>('phone');
@@ -47,7 +48,7 @@ export default function SubscriptionPage({ locationId, mode }: Props) {
       const res = await fetch('/api/subscription/portal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: e164, token: otp, location_id: locationId }),
+        body: JSON.stringify({ phone: e164, token: otp, location_id: locationId, return_to: returnTo }),
       });
 
       if (res.ok) {
@@ -72,7 +73,7 @@ export default function SubscriptionPage({ locationId, mode }: Props) {
         setStep('done');
         // Redirect to app after short delay
         setTimeout(() => {
-          window.location.href = 'truvex://subscription-updated';
+          window.location.href = returnTo;
         }, 2000);
       } else {
         const data = await res.json();
@@ -212,16 +213,22 @@ const styles: Record<string, React.CSSProperties> = {
   error: { color: '#ef4444', fontSize: 14, margin: 0 },
 };
 
+const RETURN_TO_PATTERN = /^(https?:\/\/|truvex:\/\/|exp(\+[\w-]+)?:\/\/)/i;
+
 export const getServerSideProps: GetServerSideProps = async (ctx) => {
   const { location_id } = ctx.query;
   const mode = 'manage';
 
   if (!location_id) return { notFound: true };
 
+  const rawReturnTo = typeof ctx.query.return_to === 'string' ? ctx.query.return_to : '';
+  const returnTo = RETURN_TO_PATTERN.test(rawReturnTo) ? rawReturnTo : 'truvex://subscription-updated';
+
   return {
     props: {
       locationId: location_id as string,
       mode,
+      returnTo,
     },
   };
 };

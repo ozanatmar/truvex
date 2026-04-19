@@ -5,7 +5,7 @@ import { stripe } from '../../../lib/stripe';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { phone, token, location_id } = req.body;
+  const { phone, token, location_id, return_to } = req.body;
   if (!phone || !token || !location_id) return res.status(400).json({ error: 'Missing fields' });
 
   // Verify OTP
@@ -35,12 +35,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'No subscription found' });
   }
 
-  const rawAppUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://truvex.app';
+  const host = req.headers['x-forwarded-host'] ?? req.headers.host;
+  const proto = (req.headers['x-forwarded-proto'] as string) ?? 'https';
+  const originFromReq = host ? `${proto}://${host}` : null;
+  const rawAppUrl = originFromReq ?? process.env.NEXT_PUBLIC_APP_URL ?? 'https://truvex.app';
   const appUrl = /^https?:\/\//i.test(rawAppUrl) ? rawAppUrl : `https://${rawAppUrl}`;
+
+  const returnUrl = return_to
+    ? `${appUrl}/subscription/return?return_to=${encodeURIComponent(return_to)}`
+    : `${appUrl}/subscription/return`;
 
   const session = await stripe.billingPortal.sessions.create({
     customer: location.stripe_customer_id,
-    return_url: `${appUrl}/subscription/return`,
+    return_url: returnUrl,
   });
 
   return res.status(200).json({ portalUrl: session.url });

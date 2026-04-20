@@ -150,8 +150,8 @@ export default function AddWorkerSheet({ visible, onClose, onAdded, onOpenUpgrad
   return (
     <Modal
       visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
+      animationType="fade"
+      presentationStyle="fullScreen"
       onRequestClose={onClose}
     >
       {atLimit ? (

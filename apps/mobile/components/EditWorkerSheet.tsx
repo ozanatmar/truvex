@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  Modal,
   View,
   Text,
   TextInput,
@@ -10,23 +11,25 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { supabase } from '../../../lib/supabase';
-import { useStore } from '../../../lib/store';
-import { Role } from '../../../types/database';
-import { formatPhoneDisplay } from '../../../lib/utils';
+import { supabase } from '../lib/supabase';
+import { useStore } from '../lib/store';
+import { Role } from '../types/database';
+import { formatPhoneDisplay } from '../lib/utils';
 
-export default function EditWorkerScreen() {
-  // `id` is either a profile id (claimed worker) or a location_members.id
-  // (pending invite). team.tsx sets worker.id to profile.id when present,
-  // else to the member row id.
-  const { id: paramId } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
+interface Props {
+  visible: boolean;
+  // Either a profile id (claimed worker) or a location_members.id (pending invite).
+  workerId: string | null;
+  onClose: () => void;
+  onSaved?: () => void;
+}
+
+export default function EditWorkerSheet({ visible, workerId, onClose, onSaved }: Props) {
   const { activeLocation } = useStore();
 
   const [memberRowId, setMemberRowId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
-  const [phone, setPhone] = useState<string>('');
+  const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
   const [roles, setRoles] = useState<Role[]>([]);
   const [primaryRoleId, setPrimaryRoleId] = useState('');
@@ -35,16 +38,15 @@ export default function EditWorkerScreen() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!paramId || !activeLocation) return;
+    if (!visible || !workerId || !activeLocation) return;
+    setLoading(true);
 
     (async () => {
-      // Find the membership row — paramId may be either a user_id or the
-      // member row id. `or(...)` covers both cases in one query.
       const { data: member } = await supabase
         .schema('truvex').from('location_members')
         .select('*')
         .eq('location_id', activeLocation.id)
-        .or(`user_id.eq.${paramId},id.eq.${paramId}`)
+        .or(`user_id.eq.${workerId},id.eq.${workerId}`)
         .maybeSingle();
 
       const { data: rolesData } = await supabase
@@ -63,7 +65,6 @@ export default function EditWorkerScreen() {
       setUserId(mUserId);
 
       if (mUserId) {
-        // Claimed worker: name + phone from profile, roles from worker_roles
         const [{ data: profile }, { data: wr }] = await Promise.all([
           supabase.schema('truvex').from('profiles').select('*').eq('id', mUserId).maybeSingle(),
           supabase.schema('truvex').from('worker_roles').select('*').eq('user_id', mUserId).eq('location_id', activeLocation.id),
@@ -71,10 +72,9 @@ export default function EditWorkerScreen() {
         setName((member as any).invited_name ?? (profile as any)?.name ?? '');
         setPhone((profile as any)?.phone ?? '');
         const primary = (wr ?? []).find((r: any) => r.is_primary);
-        if (primary) setPrimaryRoleId(primary.role_id);
+        setPrimaryRoleId(primary ? primary.role_id : '');
         setAdditionalRoleIds((wr ?? []).filter((r: any) => !r.is_primary).map((r: any) => r.role_id));
       } else {
-        // Pending invite: read everything from the member row
         setName((member as any).invited_name ?? '');
         setPhone((member as any).invited_phone ?? '');
         setPrimaryRoleId((member as any).primary_role_id ?? '');
@@ -83,14 +83,13 @@ export default function EditWorkerScreen() {
 
       setLoading(false);
     })();
-  }, [paramId, activeLocation]);
+  }, [visible, workerId, activeLocation]);
 
   async function handleSave() {
     if (!memberRowId || !activeLocation) return;
     setSaving(true);
 
     if (userId) {
-      // Claimed worker — update profile + rebuild worker_roles
       await supabase.schema('truvex').from('profiles').update({ name: name.trim() }).eq('id', userId);
       await supabase.schema('truvex').from('location_members')
         .update({
@@ -121,8 +120,6 @@ export default function EditWorkerScreen() {
         await supabase.schema('truvex').from('worker_roles').insert(newRoles);
       }
     } else {
-      // Pending invite — update the member row; worker_roles gets populated
-      // by claim_pending_invites() when the worker signs up.
       await supabase.schema('truvex').from('location_members')
         .update({
           invited_name: name.trim(),
@@ -133,89 +130,95 @@ export default function EditWorkerScreen() {
     }
 
     setSaving(false);
-    router.replace('/(manager)/team');
-  }
-
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color="#0E7C7B" />
-      </View>
-    );
+    onSaved?.();
+    onClose();
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <Modal
+      visible={visible}
+      animationType="fade"
+      presentationStyle="fullScreen"
+      onRequestClose={onClose}
     >
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.cancel}>Cancel</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Edit Worker</Text>
-        <TouchableOpacity onPress={handleSave} disabled={saving}>
-          {saving ? (
-            <ActivityIndicator color="#0E7C7B" size="small" />
-          ) : (
-            <Text style={styles.save}>Save</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.label}>Name</Text>
-        <TextInput
-          style={styles.input}
-          value={name}
-          onChangeText={setName}
-          placeholder="Worker's name"
-          placeholderTextColor="#555"
-        />
-
-        <Text style={styles.label}>Phone</Text>
-        <Text style={styles.phoneReadOnly}>{phone ? formatPhoneDisplay(phone) : '—'}</Text>
-
-        <Text style={styles.label}>Primary Role</Text>
-        <View style={styles.roleGrid}>
-          {roles.map((role) => (
-            <TouchableOpacity
-              key={role.id}
-              style={[styles.roleChip, primaryRoleId === role.id && styles.primaryChip]}
-              onPress={() => {
-                setPrimaryRoleId(role.id);
-                setAdditionalRoleIds((prev) => prev.filter((id) => id !== role.id));
-              }}
-            >
-              <Text style={[styles.roleChipText, primaryRoleId === role.id && styles.primaryChipText]}>
-                {role.name}
-              </Text>
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator color="#0E7C7B" />
+        </View>
+      ) : (
+        <KeyboardAvoidingView
+          style={styles.container}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.header}>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+              <Text style={styles.cancel}>Cancel</Text>
             </TouchableOpacity>
-          ))}
-        </View>
+            <Text style={styles.title}>Edit Worker</Text>
+            <TouchableOpacity onPress={handleSave} disabled={saving}>
+              {saving ? (
+                <ActivityIndicator color="#0E7C7B" size="small" />
+              ) : (
+                <Text style={styles.save}>Save</Text>
+              )}
+            </TouchableOpacity>
+          </View>
 
-        <Text style={styles.label}>Additional Roles</Text>
-        <View style={styles.roleGrid}>
-          {roles
-            .filter((r) => r.id !== primaryRoleId)
-            .map((role) => (
-              <TouchableOpacity
-                key={role.id}
-                style={[styles.roleChip, additionalRoleIds.includes(role.id) && styles.additionalChip]}
-                onPress={() =>
-                  setAdditionalRoleIds((prev) =>
-                    prev.includes(role.id) ? prev.filter((id) => id !== role.id) : [...prev, role.id]
-                  )
-                }
-              >
-                <Text style={[styles.roleChipText, additionalRoleIds.includes(role.id) && styles.additionalChipText]}>
-                  {role.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+            <Text style={styles.label}>Name</Text>
+            <TextInput
+              style={styles.input}
+              value={name}
+              onChangeText={setName}
+              placeholder="Worker's name"
+              placeholderTextColor="#555"
+            />
+
+            <Text style={styles.label}>Phone</Text>
+            <Text style={styles.phoneReadOnly}>{phone ? formatPhoneDisplay(phone) : '—'}</Text>
+
+            <Text style={styles.label}>Primary Role</Text>
+            <View style={styles.roleGrid}>
+              {roles.map((role) => (
+                <TouchableOpacity
+                  key={role.id}
+                  style={[styles.roleChip, primaryRoleId === role.id && styles.primaryChip]}
+                  onPress={() => {
+                    setPrimaryRoleId(role.id);
+                    setAdditionalRoleIds((prev) => prev.filter((id) => id !== role.id));
+                  }}
+                >
+                  <Text style={[styles.roleChipText, primaryRoleId === role.id && styles.primaryChipText]}>
+                    {role.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.label}>Additional Roles</Text>
+            <View style={styles.roleGrid}>
+              {roles
+                .filter((r) => r.id !== primaryRoleId)
+                .map((role) => (
+                  <TouchableOpacity
+                    key={role.id}
+                    style={[styles.roleChip, additionalRoleIds.includes(role.id) && styles.additionalChip]}
+                    onPress={() =>
+                      setAdditionalRoleIds((prev) =>
+                        prev.includes(role.id) ? prev.filter((id) => id !== role.id) : [...prev, role.id]
+                      )
+                    }
+                  >
+                    <Text style={[styles.roleChipText, additionalRoleIds.includes(role.id) && styles.additionalChipText]}>
+                      {role.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      )}
+    </Modal>
   );
 }
 
@@ -227,7 +230,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
+    paddingTop: 24,
     paddingBottom: 16,
     backgroundColor: '#1a1a2e',
   },

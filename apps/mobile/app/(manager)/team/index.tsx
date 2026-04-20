@@ -16,6 +16,7 @@ import { useStore } from '../../../lib/store';
 import { WorkerWithRoles } from '../../../types/database';
 import { formatPhoneDisplay } from '../../../lib/utils';
 import AddWorkerSheet from '../../../components/AddWorkerSheet';
+import EditWorkerSheet from '../../../components/EditWorkerSheet';
 
 export default function TeamScreen() {
   const router = useRouter();
@@ -24,6 +25,7 @@ export default function TeamScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+  const [editWorkerId, setEditWorkerId] = useState<string | null>(null);
 
   const fetchWorkers = useCallback(async () => {
     if (!activeLocation) return;
@@ -169,6 +171,13 @@ export default function TeamScreen() {
         onOpenUpgrade={() => router.push('/(manager)/settings')}
       />
 
+      <EditWorkerSheet
+        visible={editWorkerId !== null}
+        workerId={editWorkerId}
+        onClose={() => setEditWorkerId(null)}
+        onSaved={fetchWorkers}
+      />
+
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
@@ -197,7 +206,7 @@ export default function TeamScreen() {
               <View key={worker.id} style={styles.card}>
                 <TouchableOpacity
                   style={styles.cardMain}
-                  onPress={() => router.push(`/(manager)/team/${worker.id}`)}
+                  onPress={() => setEditWorkerId(worker.id)}
                 >
                   <View style={styles.workerInfo}>
                     <View style={styles.nameRow}>

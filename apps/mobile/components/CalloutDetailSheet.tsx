@@ -110,16 +110,19 @@ export default function CalloutDetailSheet({ visible, calloutId, onClose }: Prop
     <Modal
       visible={visible}
       animationType="fade"
-      presentationStyle="fullScreen"
       onRequestClose={onClose}
     >
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+          <TouchableOpacity
+            onPress={onClose}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            style={styles.headerSide}
+          >
             <Text style={styles.close}>Close</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Shift Details</Text>
-          <View style={{ width: 44 }} />
+          <Text style={styles.title} numberOfLines={1}>Shift Details</Text>
+          <View style={styles.headerSide} />
         </View>
 
         {loading || !detail ? (
@@ -129,9 +132,11 @@ export default function CalloutDetailSheet({ visible, calloutId, onClose }: Prop
         ) : (
           <ScrollView contentContainerStyle={styles.content}>
             <View style={styles.topRow}>
-              <Text style={styles.roleName}>{detail.role_name}</Text>
+              <Text style={styles.roleName} numberOfLines={1} ellipsizeMode="tail">
+                {detail.role_name}
+              </Text>
               <View style={[styles.badge, { backgroundColor: STATUS_COLORS[detail.status] + '22' }]}>
-                <Text style={[styles.badgeText, { color: STATUS_COLORS[detail.status] }]}>
+                <Text style={[styles.badgeText, { color: STATUS_COLORS[detail.status] }]} numberOfLines={1}>
                   {detail.status.replace('_', ' ')}
                 </Text>
               </View>
@@ -195,8 +200,10 @@ export default function CalloutDetailSheet({ visible, calloutId, onClose }: Prop
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.row}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={styles.rowValue}>{value}</Text>
+      <Text style={styles.rowLabel} numberOfLines={1}>{label}</Text>
+      <Text style={styles.rowValue} numberOfLines={1} ellipsizeMode="tail">
+        {value}
+      </Text>
     </View>
   );
 }
@@ -210,34 +217,32 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 24,
     paddingBottom: 16,
     backgroundColor: '#1a1a2e',
   },
+  headerSide: { width: 60 },
   close: { color: '#7A8899', fontSize: 16 },
-  title: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  title: { flex: 1, color: '#fff', fontSize: 17, fontWeight: '700', textAlign: 'center' },
   content: { padding: 20, gap: 16 },
   topRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 12,
   },
-  roleName: { fontSize: 24, fontWeight: '800', color: '#fff' },
+  roleName: { flex: 1, fontSize: 24, fontWeight: '700', color: '#fff' },
   badge: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20 },
   badgeText: { fontSize: 12, fontWeight: '700', textTransform: 'capitalize' },
   card: { backgroundColor: '#1a1a2e', borderRadius: 18, paddingHorizontal: 16 },
   row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 14,
-    gap: 16,
   },
-  rowLabel: { fontSize: 14, color: '#aaa' },
-  rowValue: { fontSize: 15, color: '#fff', fontWeight: '600', flexShrink: 1, textAlign: 'right' },
+  rowLabel: { fontSize: 14, color: '#aaa', flexShrink: 0 },
+  rowValue: { flex: 1, fontSize: 15, color: '#fff', fontWeight: '700', textAlign: 'right', marginLeft: 16 },
   divider: { height: 1, backgroundColor: '#2a2a40', marginHorizontal: -16 },
   notesLabel: { fontSize: 14, color: '#aaa', paddingTop: 14 },
   notesValue: { fontSize: 15, color: '#fff', lineHeight: 22, paddingTop: 8, paddingBottom: 14 },

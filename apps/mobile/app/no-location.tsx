@@ -18,10 +18,14 @@ export default function NoLocationScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>You're not linked to a location</Text>
-      <Text style={styles.body}>
-        Ask your manager to add you, or set up your own restaurant.
-      </Text>
+      <View style={styles.textRow}>
+        <Text style={styles.title}>You're not linked to a location</Text>
+      </View>
+      <View style={styles.textRow}>
+        <Text style={styles.body}>
+          Ask your manager to add you, or set up your own restaurant.
+        </Text>
+      </View>
 
       <TouchableOpacity style={styles.primaryButton} onPress={handleSetupRestaurant}>
         <Text style={styles.primaryButtonText}>Set up my restaurant</Text>
@@ -42,17 +46,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     gap: 16,
   },
+  textRow: {
+    flexDirection: 'row',
+  },
   title: {
     fontSize: 24,
     fontWeight: '800',
     color: '#fff',
     marginBottom: 8,
+    flex: 1,
+    flexWrap: 'wrap',
   },
   body: {
     fontSize: 15,
     color: '#7A8899',
     lineHeight: 22,
     marginBottom: 16,
+    flex: 1,
+    flexWrap: 'wrap',
   },
   primaryButton: {
     backgroundColor: '#0E7C7B',
@@ -65,6 +76,8 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
+    minWidth: 180,
+    textAlign: 'center',
   },
   secondaryButton: {
     height: 52,
@@ -74,5 +87,7 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     color: '#7A8899',
     fontSize: 15,
+    minWidth: 80,
+    textAlign: 'center',
   },
 });

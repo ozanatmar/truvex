@@ -32,6 +32,10 @@ interface HistoryRow {
   worker_label: string | null;
 }
 
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 export default function ManagerHistoryScreen() {
   const { activeLocation } = useStore();
   const [rows, setRows] = useState<HistoryRow[]>([]);
@@ -155,7 +159,7 @@ export default function ManagerHistoryScreen() {
                 </View>
                 <View style={[styles.badge, { backgroundColor: STATUS_COLORS[r.status] + '22' }]}>
                   <Text style={[styles.badgeText, { color: STATUS_COLORS[r.status] }]}>
-                    {r.status.replace('_', ' ')}
+                    {capitalize(r.status.replace('_', ' '))}
                   </Text>
                 </View>
               </View>
@@ -198,7 +202,7 @@ const styles = StyleSheet.create({
   roleName: { fontSize: 16, fontWeight: '700', color: '#fff' },
   workerName: { fontSize: 14, color: '#aaa', fontWeight: '500', flexShrink: 1 },
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-  badgeText: { fontSize: 11, fontWeight: '700', textTransform: 'capitalize' },
+  badgeText: { fontSize: 11, fontWeight: '700', minWidth: 60, textAlign: 'center' },
   date: { fontSize: 13, color: '#aaa' },
   time: { fontSize: 13, color: '#ccc', fontWeight: '600' },
 });

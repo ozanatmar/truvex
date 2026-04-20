@@ -123,18 +123,18 @@ export default function WorkerSettingsScreen() {
         {/* Account */}
         {profile && (
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Account</Text>
+            <Text style={styles.sectionLabel}>ACCOUNT</Text>
             <View style={styles.card}>
               <View style={styles.row}>
                 <Text style={styles.rowLabel}>Phone</Text>
-                <Text style={styles.rowValue}>{formatPhoneDisplay((profile as any).phone)}</Text>
+                <Text style={styles.rowValue} numberOfLines={1} ellipsizeMode="tail">{formatPhoneDisplay((profile as any).phone)}</Text>
               </View>
               {(profile as any).name && (
                 <>
                   <View style={styles.divider} />
                   <View style={styles.row}>
                     <Text style={styles.rowLabel}>Name</Text>
-                    <Text style={styles.rowValue}>{(profile as any).name}</Text>
+                    <Text style={styles.rowValue} numberOfLines={1} ellipsizeMode="tail">{(profile as any).name}</Text>
                   </View>
                 </>
               )}
@@ -144,7 +144,7 @@ export default function WorkerSettingsScreen() {
 
         {/* Notifications */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Notifications</Text>
+          <Text style={styles.sectionLabel}>NOTIFICATIONS</Text>
           <View style={styles.card}>
             <View style={styles.settingRow}>
               <View style={styles.settingTextWrap}>
@@ -169,7 +169,7 @@ export default function WorkerSettingsScreen() {
 
         {/* Locations */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>My Locations</Text>
+          <Text style={styles.sectionLabel}>MY LOCATIONS</Text>
           <View style={styles.card}>
             {memberships.length === 0 ? (
               <View style={styles.row}>
@@ -180,8 +180,8 @@ export default function WorkerSettingsScreen() {
                 <View key={m.id}>
                   {i > 0 && <View style={styles.divider} />}
                   <View style={styles.locationRow}>
-                    <View>
-                      <Text style={styles.locationName}>{m.location?.name}</Text>
+                    <View style={styles.locationInfo}>
+                      <Text style={styles.locationName} numberOfLines={1} ellipsizeMode="tail">{m.location?.name}</Text>
                       {m.location_id === activeLocation?.id && (
                         <Text style={styles.activeLabel}>Active</Text>
                       )}
@@ -200,7 +200,7 @@ export default function WorkerSettingsScreen() {
 
         {/* Help */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Help</Text>
+          <Text style={styles.sectionLabel}>HELP</Text>
           <View style={styles.card}>
             <TouchableOpacity style={styles.row} onPress={() => setShowTutorial(true)}>
               <Text style={styles.rowLabel}>Show app tutorial</Text>
@@ -225,21 +225,22 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 20, paddingTop: 60, paddingBottom: 20, backgroundColor: '#1a1a2e' },
   title: { fontSize: 24, fontWeight: '800', color: '#fff' },
   section: { padding: 20, paddingBottom: 0, gap: 10 },
-  sectionLabel: { fontSize: 12, fontWeight: '700', color: '#555', textTransform: 'uppercase', letterSpacing: 1 },
+  sectionLabel: { fontSize: 12, fontWeight: '700', color: '#555', letterSpacing: 1 },
   card: { backgroundColor: '#1a1a2e', borderRadius: 18, paddingHorizontal: 16 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14 },
   divider: { height: 1, backgroundColor: '#2a2a40' },
-  rowLabel: { fontSize: 15, color: '#aaa' },
-  rowValue: { fontSize: 15, color: '#fff', fontWeight: '600' },
+  rowLabel: { fontSize: 15, color: '#aaa', flexShrink: 0, minWidth: 130 },
+  rowValue: { fontSize: 15, color: '#fff', fontWeight: '600', flex: 1, textAlign: 'right', marginLeft: 16 },
   chevron: { fontSize: 20, color: '#555' },
   settingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, paddingVertical: 14 },
   settingTextWrap: { flex: 1 },
   settingTitle: { fontSize: 15, color: '#fff', fontWeight: '600' },
   settingSubtitle: { fontSize: 12, color: '#666', marginTop: 4 },
-  locationRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14 },
+  locationRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, gap: 12 },
+  locationInfo: { flex: 1 },
   locationName: { fontSize: 15, color: '#fff', fontWeight: '600' },
-  activeLabel: { fontSize: 11, color: '#0E7C7B', fontWeight: '700', marginTop: 2 },
-  leaveText: { color: '#ef4444', fontSize: 14, fontWeight: '600' },
+  activeLabel: { fontSize: 11, color: '#0E7C7B', fontWeight: '700', marginTop: 2, minWidth: 60 },
+  leaveText: { color: '#ef4444', fontSize: 14, fontWeight: '600', minWidth: 60, textAlign: 'right' },
   signOutButton: { margin: 20, alignItems: 'center', paddingVertical: 14 },
-  signOutText: { color: '#ef4444', fontSize: 15, fontWeight: '600' },
+  signOutText: { color: '#ef4444', fontSize: 15, fontWeight: '600', minWidth: 80, textAlign: 'center' },
 });

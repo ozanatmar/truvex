@@ -40,6 +40,10 @@ const STATUS_COLORS: Record<string, string> = {
   expired: '#6b7280',
 };
 
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 function formatTimestamp(ts: string | null): string {
   if (!ts) return '—';
   return new Date(ts).toLocaleString('en-US', {
@@ -136,8 +140,8 @@ export default function CalloutDetailSheet({ visible, calloutId, onClose }: Prop
                 {detail.role_name}
               </Text>
               <View style={[styles.badge, { backgroundColor: STATUS_COLORS[detail.status] + '22' }]}>
-                <Text style={[styles.badgeText, { color: STATUS_COLORS[detail.status] }]} numberOfLines={1}>
-                  {detail.status.replace('_', ' ')}
+                <Text style={[styles.badgeText, { color: STATUS_COLORS[detail.status] }]}>
+                  {capitalize(detail.status.replace('_', ' '))}
                 </Text>
               </View>
             </View>
@@ -200,7 +204,7 @@ export default function CalloutDetailSheet({ visible, calloutId, onClose }: Prop
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.row}>
-      <Text style={styles.rowLabel} numberOfLines={1}>{label}</Text>
+      <Text style={styles.rowLabel}>{label}</Text>
       <Text style={styles.rowValue} numberOfLines={1} ellipsizeMode="tail">
         {value}
       </Text>
@@ -234,14 +238,14 @@ const styles = StyleSheet.create({
   },
   roleName: { flex: 1, fontSize: 24, fontWeight: '700', color: '#fff' },
   badge: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20 },
-  badgeText: { fontSize: 12, fontWeight: '700', textTransform: 'capitalize' },
+  badgeText: { fontSize: 12, fontWeight: '700', minWidth: 60, textAlign: 'center' },
   card: { backgroundColor: '#1a1a2e', borderRadius: 18, paddingHorizontal: 16 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 14,
   },
-  rowLabel: { fontSize: 14, color: '#aaa', flexShrink: 0 },
+  rowLabel: { fontSize: 14, color: '#aaa', flexShrink: 0, minWidth: 96 },
   rowValue: { flex: 1, fontSize: 15, color: '#fff', fontWeight: '700', textAlign: 'right', marginLeft: 16 },
   divider: { height: 1, backgroundColor: '#2a2a40', marginHorizontal: -16 },
   notesLabel: { fontSize: 14, color: '#aaa', paddingTop: 14 },

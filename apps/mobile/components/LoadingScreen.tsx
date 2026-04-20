@@ -100,6 +100,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
     letterSpacing: 0.5,
+    minWidth: 120,
+    textAlign: 'center',
   },
   barWrap: {
     paddingHorizontal: 0,

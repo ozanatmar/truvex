@@ -162,6 +162,8 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
+    minWidth: 100,
+    textAlign: 'center',
   },
   resend: {
     color: '#0E7C7B',

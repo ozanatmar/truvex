@@ -29,6 +29,10 @@ interface HistoryRow {
   };
 }
 
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 export default function WorkerHistoryScreen() {
   const { session } = useStore();
   const [rows, setRows] = useState<HistoryRow[]>([]);
@@ -100,13 +104,13 @@ export default function WorkerHistoryScreen() {
               activeOpacity={0.7}
             >
               <View style={styles.cardHeader}>
-                <Text style={styles.roleName}>{row.callout.role.name}</Text>
+                <Text style={styles.roleName} numberOfLines={1} ellipsizeMode="tail">{row.callout.role.name}</Text>
                 <Text style={[
                   styles.status,
                   row.callout.status === 'filled' && styles.statusFilled,
                   row.callout.status === 'cancelled' && styles.statusCancelled,
                 ]}>
-                  {row.callout.status}
+                  {capitalize(row.callout.status.replace('_', ' '))}
                 </Text>
               </View>
               <Text style={styles.locationName}>{row.callout.location.name}</Text>
@@ -145,8 +149,8 @@ const styles = StyleSheet.create({
   emptySubtitle: { fontSize: 14, color: '#666' },
   card: { backgroundColor: '#1a1a2e', borderRadius: 18, padding: 16, gap: 4 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  roleName: { fontSize: 16, fontWeight: '700', color: '#fff' },
-  status: { fontSize: 12, color: '#aaa', fontWeight: '600', textTransform: 'capitalize' },
+  roleName: { fontSize: 16, fontWeight: '700', color: '#fff', flex: 1, marginRight: 8 },
+  status: { fontSize: 12, color: '#aaa', fontWeight: '600', minWidth: 72, textAlign: 'right' },
   statusFilled: { color: '#10b981' },
   statusCancelled: { color: '#6b7280' },
   locationName: { fontSize: 13, color: '#666' },

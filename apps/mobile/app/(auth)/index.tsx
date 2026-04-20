@@ -126,6 +126,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#0E7C7B',
     marginBottom: 8,
+    minWidth: 180,
   },
   tagline: {
     fontSize: 16,
@@ -154,6 +155,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
     fontWeight: '600',
+    minWidth: 24,
   },
   input: {
     flex: 1,
@@ -176,11 +178,14 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
+    minWidth: 220,
+    textAlign: 'center',
   },
   hint: {
     fontSize: 12,
     color: '#666',
     textAlign: 'center',
     lineHeight: 18,
+    alignSelf: 'stretch',
   },
 });

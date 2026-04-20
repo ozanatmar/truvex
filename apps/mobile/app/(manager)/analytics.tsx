@@ -217,23 +217,23 @@ export default function AnalyticsScreen() {
         <View style={styles.summaryRow}>
           <View style={styles.summaryCard}>
             <Text style={styles.summaryValue}>{stats.totalCallouts}</Text>
-            <Text style={styles.summaryLabel}>Callouts</Text>
+            <Text style={styles.summaryLabel}>CALLOUTS</Text>
           </View>
           <View style={styles.summaryCard}>
             <Text style={styles.summaryValue}>{fillRate}%</Text>
-            <Text style={styles.summaryLabel}>Fill rate</Text>
+            <Text style={styles.summaryLabel}>FILL RATE</Text>
           </View>
           <View style={styles.summaryCard}>
             <Text style={styles.summaryValue}>
               {stats.avgResponseMin !== null ? `${stats.avgResponseMin}m` : '—'}
             </Text>
-            <Text style={styles.summaryLabel}>Avg response</Text>
+            <Text style={styles.summaryLabel}>AVG RESPONSE</Text>
           </View>
         </View>
 
         {/* Day of week chart */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Callouts by day</Text>
+          <Text style={styles.sectionTitle}>CALLOUTS BY DAY</Text>
           <View style={styles.barChart}>
             {DAYS.map((day, i) => (
               <View key={day} style={styles.barColumn}>
@@ -254,7 +254,7 @@ export default function AnalyticsScreen() {
         {/* Role breakdown */}
         {stats.roleStats.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>By role</Text>
+            <Text style={styles.sectionTitle}>BY ROLE</Text>
             {stats.roleStats.map((r) => (
               <View key={r.name} style={styles.roleRow}>
                 <Text style={styles.roleName}>{r.name}</Text>
@@ -272,12 +272,12 @@ export default function AnalyticsScreen() {
         {/* Worker response table */}
         {stats.workerStats.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Worker responses</Text>
+            <Text style={styles.sectionTitle}>WORKER RESPONSES</Text>
             <View style={styles.table}>
               <View style={[styles.tableRow, styles.tableHeader]}>
-                <Text style={[styles.tableCell, styles.tableCellName, styles.tableHeaderText]}>Worker</Text>
-                <Text style={[styles.tableCell, styles.tableHeaderText]}>Accepted</Text>
-                <Text style={[styles.tableCell, styles.tableHeaderText]}>Declined</Text>
+                <Text style={[styles.tableCell, styles.tableCellName, styles.tableHeaderText]}>WORKER</Text>
+                <Text style={[styles.tableCell, styles.tableHeaderText]}>ACCEPTED</Text>
+                <Text style={[styles.tableCell, styles.tableHeaderText]}>DECLINED</Text>
               </View>
               {stats.workerStats.map((w) => (
                 <View key={w.name} style={styles.tableRow}>
@@ -338,11 +338,11 @@ const styles = StyleSheet.create({
     padding: 14, alignItems: 'center', gap: 4,
   },
   summaryValue: { fontSize: 26, fontWeight: '800', color: '#fff' },
-  summaryLabel: { fontSize: 11, color: '#7A8899', fontWeight: '600', textTransform: 'uppercase' },
+  summaryLabel: { fontSize: 11, color: '#7A8899', fontWeight: '600' },
 
   // Section
   section: { backgroundColor: '#1a1a2e', borderRadius: 14, padding: 16, gap: 12 },
-  sectionTitle: { fontSize: 13, fontWeight: '700', color: '#7A8899', textTransform: 'uppercase', letterSpacing: 0.5 },
+  sectionTitle: { fontSize: 13, fontWeight: '700', color: '#7A8899', letterSpacing: 0.5 },
 
   // Day-of-week bar chart
   barChart: { flexDirection: 'row', height: 80, alignItems: 'flex-end', gap: 8 },
@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
   table: { gap: 0 },
   tableRow: { flexDirection: 'row', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#2a2a40' },
   tableHeader: { borderBottomWidth: 1, borderBottomColor: '#2a2a40' },
-  tableHeaderText: { color: '#7A8899', fontSize: 11, fontWeight: '700', textTransform: 'uppercase' },
+  tableHeaderText: { color: '#7A8899', fontSize: 11, fontWeight: '700' },
   tableCell: { flex: 1, fontSize: 13, color: '#ccc', textAlign: 'center' },
   tableCellName: { flex: 2, textAlign: 'left', color: '#fff', fontWeight: '600' },
   acceptedText: { color: '#10b981', fontWeight: '700' },

@@ -17,6 +17,10 @@ import { formatShiftTime, formatShiftDate } from '../../../lib/utils';
 
 const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL ?? 'https://truvex.app';
 
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 interface AcceptorRow extends CalloutResponse {
   worker: Profile & { primary_role?: string };
 }
@@ -164,7 +168,7 @@ export default function CalloutDetailScreen() {
           ) : null}
           <View style={styles.statusRow}>
             <Text style={styles.statusLabel}>Status: </Text>
-            <Text style={styles.statusValue}>{callout.status.replace('_', ' ')}</Text>
+            <Text style={styles.statusValue}>{capitalize(callout.status.replace('_', ' '))}</Text>
           </View>
           <TouchableOpacity style={styles.copyLinkButton} onPress={handleCopyLink}>
             <Text style={styles.copyLinkText}>{copied ? '✓ Link copied' : 'Copy shift link'}</Text>
@@ -238,7 +242,7 @@ const styles = StyleSheet.create({
   notes: { fontSize: 13, color: '#666', fontStyle: 'italic', marginTop: 4 },
   statusRow: { flexDirection: 'row', marginTop: 8 },
   statusLabel: { fontSize: 13, color: '#666' },
-  statusValue: { fontSize: 13, color: '#aaa', fontWeight: '600', textTransform: 'capitalize' },
+  statusValue: { fontSize: 13, color: '#aaa', fontWeight: '600' },
   sectionTitle: { fontSize: 15, fontWeight: '700', color: '#aaa', marginTop: 8 },
   workerCard: {
     backgroundColor: '#1a1a2e',

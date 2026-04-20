@@ -369,7 +369,7 @@ export default function ManagerSettingsScreen() {
 
       {/* Restaurant */}
       <View style={styles.section}>
-        <Text style={styles.sectionLabel}>Restaurant</Text>
+        <Text style={styles.sectionLabel}>RESTAURANT</Text>
         <View style={styles.card}>
           <Row label="Name" value={loc?.name ?? '—'} />
           <Divider />
@@ -389,7 +389,7 @@ export default function ManagerSettingsScreen() {
 
       {/* Subscription */}
       <View style={styles.section}>
-        <Text style={styles.sectionLabel}>Subscription</Text>
+        <Text style={styles.sectionLabel}>SUBSCRIPTION</Text>
         <View style={styles.card}>
           <View style={styles.planRow}>
             <Text style={styles.rowLabel}>Current plan</Text>
@@ -545,7 +545,7 @@ export default function ManagerSettingsScreen() {
 
       {/* Account */}
       <View style={styles.section}>
-        <Text style={styles.sectionLabel}>Account</Text>
+        <Text style={styles.sectionLabel}>ACCOUNT</Text>
         <View style={styles.card}>
           <Row label="Phone" value={session?.user?.phone ?? '—'} />
         </View>
@@ -553,7 +553,7 @@ export default function ManagerSettingsScreen() {
 
       {/* Help */}
       <View style={styles.section}>
-        <Text style={styles.sectionLabel}>Help</Text>
+        <Text style={styles.sectionLabel}>HELP</Text>
         <View style={styles.card}>
           <TouchableOpacity style={styles.row} onPress={() => setShowTutorial(true)}>
             <Text style={styles.rowLabel}>Show app tutorial</Text>
@@ -591,7 +591,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.row}>
       <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={styles.rowValue}>{value}</Text>
+      <Text style={styles.rowValue} numberOfLines={1} ellipsizeMode="tail">{value}</Text>
     </View>
   );
 }
@@ -609,15 +609,15 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 24, fontWeight: '800', color: '#fff' },
   section: { padding: 20, gap: 12 },
-  sectionLabel: { fontSize: 12, fontWeight: '700', color: '#555', textTransform: 'uppercase', letterSpacing: 1 },
+  sectionLabel: { fontSize: 12, fontWeight: '700', color: '#555', letterSpacing: 1 },
   card: { backgroundColor: '#1a1a2e', borderRadius: 18, paddingHorizontal: 16 },
   row: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingVertical: 14,
   },
   divider: { height: 1, backgroundColor: '#2a2a40', marginHorizontal: -16 },
-  rowLabel: { fontSize: 15, color: '#aaa' },
-  rowValue: { fontSize: 15, color: '#fff', fontWeight: '600' },
+  rowLabel: { fontSize: 15, color: '#aaa', flexShrink: 0, minWidth: 130 },
+  rowValue: { fontSize: 15, color: '#fff', fontWeight: '600', flex: 1, textAlign: 'right', marginLeft: 16 },
   planRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingVertical: 14,

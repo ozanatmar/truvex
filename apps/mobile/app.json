@@ -7,6 +7,7 @@
     "icon": "./assets/icon.png",
     "scheme": "truvex",
     "userInterfaceStyle": "light",
+    "backgroundColor": "#0f0f1a",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -15,6 +16,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "app.truvex.mobile",
+      "backgroundColor": "#0f0f1a",
       "infoPlist": {
         "NSContactsUsageDescription": "Truvex uses your contacts to quickly add workers to your team."
       }
@@ -25,6 +27,7 @@
         "backgroundColor": "#1a1a2e"
       },
       "package": "app.truvex.mobile",
+      "backgroundColor": "#0f0f1a",
       "permissions": [
         "READ_CONTACTS"
       ]

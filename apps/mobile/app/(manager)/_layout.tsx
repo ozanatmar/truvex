@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 export default function ManagerLayout() {
   return (
     <Tabs
+      sceneContainerStyle={{ backgroundColor: '#0f0f1a' }}
       screenOptions={{
         headerShown: false,
         tabBarStyle: {

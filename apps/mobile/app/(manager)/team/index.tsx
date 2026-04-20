@@ -15,6 +15,7 @@ import { supabase } from '../../../lib/supabase';
 import { useStore } from '../../../lib/store';
 import { WorkerWithRoles } from '../../../types/database';
 import { formatPhoneDisplay } from '../../../lib/utils';
+import AddWorkerSheet from '../../../components/AddWorkerSheet';
 
 export default function TeamScreen() {
   const router = useRouter();
@@ -22,6 +23,7 @@ export default function TeamScreen() {
   const [workers, setWorkers] = useState<WorkerWithRoles[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
 
   const fetchWorkers = useCallback(async () => {
     if (!activeLocation) return;
@@ -154,11 +156,18 @@ export default function TeamScreen() {
         </View>
         <TouchableOpacity
           style={styles.addButton}
-          onPress={() => router.push('/(manager)/team/add')}
+          onPress={() => setShowAdd(true)}
         >
           <Text style={styles.addButtonText}>+ Add</Text>
         </TouchableOpacity>
       </View>
+
+      <AddWorkerSheet
+        visible={showAdd}
+        onClose={() => setShowAdd(false)}
+        onAdded={fetchWorkers}
+        onOpenUpgrade={() => router.push('/(manager)/settings')}
+      />
 
       <ScrollView
         style={styles.scroll}

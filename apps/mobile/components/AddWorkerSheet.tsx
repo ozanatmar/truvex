@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
+  Modal,
   View,
   Text,
   TextInput,
@@ -11,12 +12,18 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { supabase } from '../../../lib/supabase';
-import { useStore } from '../../../lib/store';
-import { Role } from '../../../types/database';
-import { workerLimit, effectiveTier } from '../../../lib/subscription';
-import ContactPickerSheet from '../../../components/ContactPickerSheet';
+import { supabase } from '../lib/supabase';
+import { useStore } from '../lib/store';
+import { Role } from '../types/database';
+import { workerLimit, effectiveTier } from '../lib/subscription';
+import ContactPickerSheet from './ContactPickerSheet';
+
+interface Props {
+  visible: boolean;
+  onClose: () => void;
+  onAdded?: () => void;
+  onOpenUpgrade?: () => void;
+}
 
 function formatUSPhone(raw: string): string {
   const digits = raw.replace(/\D/g, '');
@@ -25,8 +32,7 @@ function formatUSPhone(raw: string): string {
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
 }
 
-export default function AddWorkerScreen() {
-  const router = useRouter();
+export default function AddWorkerSheet({ visible, onClose, onAdded, onOpenUpgrade }: Props) {
   const { activeLocation, session } = useStore();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -45,7 +51,13 @@ export default function AddWorkerScreen() {
   const atLimit = limit !== null && workerCount >= limit;
 
   useEffect(() => {
+    if (!visible) return;
+    setName('');
+    setPhone('');
+    setPrimaryRoleId('');
+    setAdditionalRoleIds([]);
     if (!activeLocation) return;
+
     supabase
       .schema('truvex').from('roles')
       .select('*')
@@ -58,7 +70,7 @@ export default function AddWorkerScreen() {
       .eq('location_id', activeLocation.id)
       .eq('member_type', 'worker')
       .then(({ count }) => { if (count !== null) setWorkerCount(count); });
-  }, [activeLocation]);
+  }, [visible, activeLocation]);
 
   function toggleAdditionalRole(roleId: string) {
     if (roleId === primaryRoleId) return;
@@ -73,7 +85,6 @@ export default function AddWorkerScreen() {
 
     const e164 = `+1${digits}`;
 
-    // Check if this phone already has a Supabase Auth account (profile exists)
     const { data: existingProfile } = await supabase
       .schema('truvex').from('profiles')
       .select('id')
@@ -81,7 +92,6 @@ export default function AddWorkerScreen() {
       .maybeSingle();
 
     if (existingProfile) {
-      // Worker already has an account — link them directly
       const { error: memberError } = await supabase
         .schema('truvex').from('location_members')
         .upsert({
@@ -111,7 +121,6 @@ export default function AddWorkerScreen() {
       ];
       await supabase.schema('truvex').from('worker_roles').upsert(roleRows);
     } else {
-      // Worker hasn't signed up yet — store as pending invite by phone
       const { error: inviteError } = await supabase
         .schema('truvex').from('location_members')
         .upsert({
@@ -134,132 +143,143 @@ export default function AddWorkerScreen() {
     }
 
     setLoading(false);
-    router.back();
-  }
-
-  if (atLimit) {
-    const tierLabel = tier === 'pro' ? 'Pro' : 'Free';
-    const nextTier = tier === 'free' ? 'Pro ($49/mo)' : 'Business ($99/mo)';
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Text style={styles.cancel}>Cancel</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>Add Worker</Text>
-          <View style={{ width: 40 }} />
-        </View>
-        <View style={styles.limitContainer}>
-          <Text style={styles.limitIcon}>🔒</Text>
-          <Text style={styles.limitTitle}>Worker limit reached</Text>
-          <Text style={styles.limitBody}>
-            Your {tierLabel} plan supports up to {limit} workers. Upgrade to {nextTier} to add more.
-          </Text>
-          <TouchableOpacity style={styles.upgradeButton} onPress={() => router.push('/(manager)/settings')}>
-            <Text style={styles.upgradeButtonText}>View upgrade options</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
+    onAdded?.();
+    onClose();
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
     >
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.cancel}>Cancel</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Add Worker</Text>
-        <TouchableOpacity onPress={handleAdd} disabled={!isValid || loading}>
-          {loading ? (
-            <ActivityIndicator color="#F5853F" size="small" />
-          ) : (
-            <Text style={[styles.save, !isValid && styles.saveDisabled]}>Add</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView contentContainerStyle={styles.content}>
-        <TouchableOpacity style={styles.contactsButton} onPress={() => setShowContacts(true)}>
-          <Text style={styles.contactsButtonText}>Import from Contacts</Text>
-        </TouchableOpacity>
-
-        <ContactPickerSheet
-          visible={showContacts}
-          onClose={() => setShowContacts(false)}
-          onSelect={({ name: pickedName, digits: pickedDigits }) => {
-            setName(pickedName);
-            setPhone(formatUSPhone(pickedDigits));
-          }}
-        />
-
-        <Text style={styles.label}>Name</Text>
-        <TextInput
-          style={styles.input}
-          value={name}
-          onChangeText={setName}
-          placeholder="Worker's name"
-          placeholderTextColor="#555"
-        />
-
-        <Text style={styles.label}>Phone</Text>
-        <View style={styles.phoneRow}>
-          <Text style={styles.countryCode}>+1</Text>
-          <TextInput
-            style={styles.phoneInput}
-            value={phone}
-            onChangeText={(v) => setPhone(formatUSPhone(v))}
-            placeholder="(555) 555-5555"
-            placeholderTextColor="#555"
-            keyboardType="phone-pad"
-            maxLength={14}
-          />
-        </View>
-
-        <Text style={styles.label}>Primary Role</Text>
-        <View style={styles.roleGrid}>
-          {roles.map((role) => (
+      {atLimit ? (
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+              <Text style={styles.cancel}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.title}>Add Worker</Text>
+            <View style={{ width: 40 }} />
+          </View>
+          <View style={styles.limitContainer}>
+            <Text style={styles.limitIcon}>🔒</Text>
+            <Text style={styles.limitTitle}>Worker limit reached</Text>
+            <Text style={styles.limitBody}>
+              Your {tier === 'pro' ? 'Pro' : 'Free'} plan supports up to {limit} workers. Upgrade to{' '}
+              {tier === 'free' ? 'Pro ($49/mo)' : 'Business ($99/mo)'} to add more.
+            </Text>
             <TouchableOpacity
-              key={role.id}
-              style={[styles.roleChip, primaryRoleId === role.id && styles.primaryChip]}
+              style={styles.upgradeButton}
               onPress={() => {
-                setPrimaryRoleId(role.id);
-                setAdditionalRoleIds((prev) => prev.filter((id) => id !== role.id));
+                onClose();
+                onOpenUpgrade?.();
               }}
             >
-              <Text style={[styles.roleChipText, primaryRoleId === role.id && styles.primaryChipText]}>
-                {role.name}
-              </Text>
+              <Text style={styles.upgradeButtonText}>View upgrade options</Text>
             </TouchableOpacity>
-          ))}
+          </View>
         </View>
+      ) : (
+        <KeyboardAvoidingView
+          style={styles.container}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.header}>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+              <Text style={styles.cancel}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.title}>Add Worker</Text>
+            <TouchableOpacity onPress={handleAdd} disabled={!isValid || loading}>
+              {loading ? (
+                <ActivityIndicator color="#F5853F" size="small" />
+              ) : (
+                <Text style={[styles.save, !isValid && styles.saveDisabled]}>Add</Text>
+              )}
+            </TouchableOpacity>
+          </View>
 
-        <Text style={styles.label}>Additional Roles (optional)</Text>
-        <View style={styles.roleGrid}>
-          {roles
-            .filter((r) => r.id !== primaryRoleId)
-            .map((role) => (
-              <TouchableOpacity
-                key={role.id}
-                style={[styles.roleChip, additionalRoleIds.includes(role.id) && styles.additionalChip]}
-                onPress={() => toggleAdditionalRole(role.id)}
-              >
-                <Text
-                  style={[
-                    styles.roleChipText,
-                    additionalRoleIds.includes(role.id) && styles.additionalChipText,
-                  ]}
+          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+            <TouchableOpacity style={styles.contactsButton} onPress={() => setShowContacts(true)}>
+              <Text style={styles.contactsButtonText}>Import from Contacts</Text>
+            </TouchableOpacity>
+
+            <ContactPickerSheet
+              visible={showContacts}
+              onClose={() => setShowContacts(false)}
+              onSelect={({ name: pickedName, digits: pickedDigits }) => {
+                setName(pickedName);
+                setPhone(formatUSPhone(pickedDigits));
+              }}
+            />
+
+            <Text style={styles.label}>Name</Text>
+            <TextInput
+              style={styles.input}
+              value={name}
+              onChangeText={setName}
+              placeholder="Worker's name"
+              placeholderTextColor="#555"
+            />
+
+            <Text style={styles.label}>Phone</Text>
+            <View style={styles.phoneRow}>
+              <Text style={styles.countryCode}>+1</Text>
+              <TextInput
+                style={styles.phoneInput}
+                value={phone}
+                onChangeText={(v) => setPhone(formatUSPhone(v))}
+                placeholder="(555) 555-5555"
+                placeholderTextColor="#555"
+                keyboardType="phone-pad"
+                maxLength={14}
+              />
+            </View>
+
+            <Text style={styles.label}>Primary Role</Text>
+            <View style={styles.roleGrid}>
+              {roles.map((role) => (
+                <TouchableOpacity
+                  key={role.id}
+                  style={[styles.roleChip, primaryRoleId === role.id && styles.primaryChip]}
+                  onPress={() => {
+                    setPrimaryRoleId(role.id);
+                    setAdditionalRoleIds((prev) => prev.filter((id) => id !== role.id));
+                  }}
                 >
-                  {role.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+                  <Text style={[styles.roleChipText, primaryRoleId === role.id && styles.primaryChipText]}>
+                    {role.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.label}>Additional Roles (optional)</Text>
+            <View style={styles.roleGrid}>
+              {roles
+                .filter((r) => r.id !== primaryRoleId)
+                .map((role) => (
+                  <TouchableOpacity
+                    key={role.id}
+                    style={[styles.roleChip, additionalRoleIds.includes(role.id) && styles.additionalChip]}
+                    onPress={() => toggleAdditionalRole(role.id)}
+                  >
+                    <Text
+                      style={[
+                        styles.roleChipText,
+                        additionalRoleIds.includes(role.id) && styles.additionalChipText,
+                      ]}
+                    >
+                      {role.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      )}
+    </Modal>
   );
 }
 
@@ -270,7 +290,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
+    paddingTop: 24,
     paddingBottom: 16,
     backgroundColor: '#1a1a2e',
   },

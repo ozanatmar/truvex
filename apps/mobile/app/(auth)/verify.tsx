@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#fff',
     marginBottom: 12,
   },
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
   },
   phoneText: {
     color: '#ccc',
-    fontWeight: '700',
+    fontWeight: '600',
   },
   otpInput: {
     backgroundColor: '#2a2a40',
@@ -167,6 +167,6 @@ const styles = StyleSheet.create({
     color: '#0E7C7B',
     fontSize: 14,
     textAlign: 'center',
-    fontWeight: '700',
+    fontWeight: '600',
   },
 });

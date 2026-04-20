@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
   save: { color: '#F5853F', fontSize: 16, fontWeight: '700' },
   saveDisabled: { opacity: 0.4 },
   content: { padding: 20, gap: 10 },
-  label: { fontSize: 13, fontWeight: '700', color: '#aaa', marginTop: 8, marginBottom: 4 },
+  label: { fontSize: 13, fontWeight: '600', color: '#aaa', marginTop: 8, marginBottom: 4 },
   input: {
     backgroundColor: '#1a1a2e',
     borderRadius: 10,
@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
     height: 48,
     gap: 8,
   },
-  countryCode: { fontSize: 15, color: '#fff', fontWeight: '700' },
+  countryCode: { fontSize: 15, color: '#fff', fontWeight: '600' },
   phoneInput: { flex: 1, fontSize: 15, color: '#fff' },
   roleGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   roleChip: {
@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
   },
   primaryChip: { backgroundColor: '#0E7C7B', borderColor: '#0E7C7B' },
   additionalChip: { backgroundColor: 'rgba(14,124,123,0.15)', borderColor: '#0E7C7B' },
-  roleChipText: { color: '#666', fontSize: 13, fontWeight: '700' },
+  roleChipText: { color: '#666', fontSize: 13, fontWeight: '600' },
   primaryChipText: { color: '#fff' },
   additionalChipText: { color: '#7ECACA' },
   limitContainer: {
@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   limitIcon: { fontSize: 48 },
-  limitTitle: { fontSize: 22, fontWeight: '700', color: '#fff', textAlign: 'center' },
+  limitTitle: { fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center' },
   limitBody: { fontSize: 15, color: '#7A8899', textAlign: 'center', lineHeight: 22 },
   upgradeButton: {
     backgroundColor: '#F5853F',

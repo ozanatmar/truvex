@@ -232,13 +232,13 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { padding: 20, gap: 12 },
   infoCard: { backgroundColor: '#1a1a2e', borderRadius: 18, padding: 18, gap: 6 },
-  roleName: { fontSize: 22, fontWeight: '700', color: '#fff' },
+  roleName: { fontSize: 22, fontWeight: '800', color: '#fff' },
   dateText: { fontSize: 14, color: '#aaa' },
-  timeText: { fontSize: 16, color: '#ccc', fontWeight: '700' },
+  timeText: { fontSize: 16, color: '#ccc', fontWeight: '600' },
   notes: { fontSize: 13, color: '#666', fontStyle: 'italic', marginTop: 4 },
   statusRow: { flexDirection: 'row', marginTop: 8 },
   statusLabel: { fontSize: 13, color: '#666' },
-  statusValue: { fontSize: 13, color: '#aaa', fontWeight: '700', textTransform: 'capitalize' },
+  statusValue: { fontSize: 13, color: '#aaa', fontWeight: '600', textTransform: 'capitalize' },
   sectionTitle: { fontSize: 15, fontWeight: '700', color: '#aaa', marginTop: 8 },
   workerCard: {
     backgroundColor: '#1a1a2e',
@@ -275,5 +275,5 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignSelf: 'flex-start',
   },
-  copyLinkText: { fontSize: 13, color: '#7A8899', fontWeight: '700' },
+  copyLinkText: { fontSize: 13, color: '#7A8899', fontWeight: '600' },
 });

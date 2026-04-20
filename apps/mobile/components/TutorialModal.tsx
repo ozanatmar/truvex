@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#fff',
     textAlign: 'center',
     lineHeight: 30,
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
   backText: {
     color: '#aaa',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   nextButton: {
     flex: 2,

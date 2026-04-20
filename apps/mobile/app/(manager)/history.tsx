@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     backgroundColor: '#1a1a2e',
   },
-  title: { fontSize: 24, fontWeight: '700', color: '#fff' },
+  title: { fontSize: 24, fontWeight: '800', color: '#fff' },
   scroll: { flex: 1 },
   content: { padding: 16, gap: 10 },
   empty: { alignItems: 'center', paddingTop: 80, gap: 8 },
@@ -200,5 +200,5 @@ const styles = StyleSheet.create({
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
   badgeText: { fontSize: 11, fontWeight: '700', textTransform: 'capitalize' },
   date: { fontSize: 13, color: '#aaa' },
-  time: { fontSize: 13, color: '#ccc', fontWeight: '700' },
+  time: { fontSize: 13, color: '#ccc', fontWeight: '600' },
 });

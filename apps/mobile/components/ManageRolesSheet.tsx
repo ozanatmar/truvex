@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
   removeText: {
     color: '#ef4444',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   addRow: {
     flexDirection: 'row',

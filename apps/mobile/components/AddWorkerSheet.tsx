@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  Animated,
   Modal,
   View,
   Text,
@@ -33,8 +32,6 @@ function formatUSPhone(raw: string): string {
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
 }
 
-const FADE_MS = 150;
-
 export default function AddWorkerSheet({ visible, onClose, onAdded, onOpenUpgrade }: Props) {
   const { activeLocation, session } = useStore();
   const [name, setName] = useState('');
@@ -45,23 +42,6 @@ export default function AddWorkerSheet({ visible, onClose, onAdded, onOpenUpgrad
   const [loading, setLoading] = useState(false);
   const [workerCount, setWorkerCount] = useState(0);
   const [showContacts, setShowContacts] = useState(false);
-
-  // Drive fade manually so we can halve the default Modal duration (~300ms).
-  const [mounted, setMounted] = useState(visible);
-  const opacity = useRef(new Animated.Value(visible ? 1 : 0)).current;
-
-  useEffect(() => {
-    if (visible) {
-      setMounted(true);
-      Animated.timing(opacity, { toValue: 1, duration: FADE_MS, useNativeDriver: true }).start();
-    } else if (mounted) {
-      Animated.timing(opacity, { toValue: 0, duration: FADE_MS, useNativeDriver: true }).start(
-        ({ finished }) => {
-          if (finished) setMounted(false);
-        },
-      );
-    }
-  }, [visible]);
 
   const digits = phone.replace(/\D/g, '');
   const isValid = name.trim().length > 0 && digits.length === 10 && primaryRoleId !== '';
@@ -169,12 +149,11 @@ export default function AddWorkerSheet({ visible, onClose, onAdded, onOpenUpgrad
 
   return (
     <Modal
-      visible={mounted}
-      animationType="none"
+      visible={visible}
+      animationType="fade"
       presentationStyle="fullScreen"
       onRequestClose={onClose}
     >
-      <Animated.View style={[styles.fadeWrapper, { opacity }]}>
       {atLimit ? (
         <View style={styles.container}>
           <View style={styles.header}>
@@ -300,13 +279,11 @@ export default function AddWorkerSheet({ visible, onClose, onAdded, onOpenUpgrad
           </ScrollView>
         </KeyboardAvoidingView>
       )}
-      </Animated.View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  fadeWrapper: { flex: 1, backgroundColor: '#0f0f1a' },
   container: { flex: 1, backgroundColor: '#0f0f1a' },
   header: {
     flexDirection: 'row',

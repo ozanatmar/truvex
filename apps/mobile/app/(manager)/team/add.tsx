@@ -12,11 +12,11 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import * as Contacts from 'expo-contacts';
 import { supabase } from '../../../lib/supabase';
 import { useStore } from '../../../lib/store';
 import { Role } from '../../../types/database';
 import { workerLimit, effectiveTier } from '../../../lib/subscription';
+import ContactPickerSheet from '../../../components/ContactPickerSheet';
 
 function formatUSPhone(raw: string): string {
   const digits = raw.replace(/\D/g, '');
@@ -35,6 +35,7 @@ export default function AddWorkerScreen() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(false);
   const [workerCount, setWorkerCount] = useState(0);
+  const [showContacts, setShowContacts] = useState(false);
 
   const digits = phone.replace(/\D/g, '');
   const isValid = name.trim().length > 0 && digits.length === 10 && primaryRoleId !== '';
@@ -182,6 +183,19 @@ export default function AddWorkerScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
+        <TouchableOpacity style={styles.contactsButton} onPress={() => setShowContacts(true)}>
+          <Text style={styles.contactsButtonText}>Import from Contacts</Text>
+        </TouchableOpacity>
+
+        <ContactPickerSheet
+          visible={showContacts}
+          onClose={() => setShowContacts(false)}
+          onSelect={({ name: pickedName, digits: pickedDigits }) => {
+            setName(pickedName);
+            setPhone(formatUSPhone(pickedDigits));
+          }}
+        />
+
         <Text style={styles.label}>Name</Text>
         <TextInput
           style={styles.input}
@@ -318,4 +332,14 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   upgradeButtonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  contactsButton: {
+    borderWidth: 1,
+    borderColor: '#0E7C7B',
+    borderRadius: 10,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  contactsButtonText: { color: '#0E7C7B', fontWeight: '700', fontSize: 14 },
 });

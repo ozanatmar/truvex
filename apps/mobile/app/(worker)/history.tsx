@@ -40,10 +40,10 @@ export default function WorkerHistoryScreen() {
       .schema('truvex').from('callout_responses')
       .select(`
         *,
-        callout:truvex.callouts(
+        callout:callouts(
           shift_date, start_time, end_time, status,
-          role:truvex.roles(name),
-          location:truvex.locations(name)
+          role:roles(name),
+          location:locations(name)
         )
       `)
       .eq('worker_id', session.user.id)
@@ -51,7 +51,7 @@ export default function WorkerHistoryScreen() {
       .order('responded_at', { ascending: false })
       .limit(50);
 
-    if (data) setRows(data as HistoryRow[]);
+    if (data) setRows((data as HistoryRow[]).filter((r) => r.callout));
     setLoading(false);
     setRefreshing(false);
   }, [session]);

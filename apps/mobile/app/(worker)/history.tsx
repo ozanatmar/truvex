@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import {
   View,
   Text,
+  TouchableOpacity,
   StyleSheet,
   ScrollView,
   RefreshControl,
@@ -11,6 +12,7 @@ import { useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../lib/store';
 import { formatShiftTime, formatShiftDate } from '../../lib/utils';
+import CalloutDetailSheet from '../../components/CalloutDetailSheet';
 
 interface HistoryRow {
   id: string;
@@ -32,6 +34,7 @@ export default function WorkerHistoryScreen() {
   const [rows, setRows] = useState<HistoryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const fetch = useCallback(async () => {
     if (!session) return;
@@ -90,7 +93,12 @@ export default function WorkerHistoryScreen() {
           </View>
         ) : (
           rows.map((row) => (
-            <View key={row.id} style={styles.card}>
+            <TouchableOpacity
+              key={row.id}
+              style={styles.card}
+              onPress={() => setSelectedId(row.callout_id)}
+              activeOpacity={0.7}
+            >
               <View style={styles.cardHeader}>
                 <Text style={styles.roleName}>{row.callout.role.name}</Text>
                 <Text style={[
@@ -106,10 +114,16 @@ export default function WorkerHistoryScreen() {
               <Text style={styles.time}>
                 {formatShiftTime(row.callout.start_time)} – {formatShiftTime(row.callout.end_time)}
               </Text>
-            </View>
+            </TouchableOpacity>
           ))
         )}
       </ScrollView>
+
+      <CalloutDetailSheet
+        visible={selectedId !== null}
+        calloutId={selectedId}
+        onClose={() => setSelectedId(null)}
+      />
     </View>
   );
 }

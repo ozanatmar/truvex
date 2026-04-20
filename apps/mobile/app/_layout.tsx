@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { View, Animated, StyleSheet } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import * as SystemUI from 'expo-system-ui';
 import { useFonts, DMSans_700Bold, DMSans_800ExtraBold } from '@expo-google-fonts/dm-sans';
 import { useStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
@@ -14,6 +15,9 @@ import LoadingScreen from '../components/LoadingScreen';
 
 // Keep the native splash visible until our JS loading screen is ready to show
 SplashScreen.preventAutoHideAsync();
+
+// Paint the native window so screen-swap animations never reveal white.
+SystemUI.setBackgroundColorAsync('#0f0f1a').catch(() => {});
 
 function useAuthGuard() {
   const router = useRouter();

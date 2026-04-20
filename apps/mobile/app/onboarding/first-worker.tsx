@@ -12,10 +12,10 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import * as Contacts from 'expo-contacts';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../lib/store';
 import { Role } from '../../types/database';
+import ContactPickerSheet from '../../components/ContactPickerSheet';
 
 function formatUSPhone(raw: string): string {
   const digits = raw.replace(/\D/g, '');
@@ -34,6 +34,7 @@ export default function FirstWorkerScreen() {
   const [additionalRoleIds, setAdditionalRoleIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingRoles, setLoadingRoles] = useState(false);
+  const [showContacts, setShowContacts] = useState(false);
 
   const digits = phone.replace(/\D/g, '');
   const isValid = name.trim().length > 0 && digits.length === 10 && selectedRoleId !== '';
@@ -57,22 +58,6 @@ export default function FirstWorkerScreen() {
         setLoadingRoles(false);
       });
   }, [activeLocation]);
-
-  async function pickFromContacts() {
-    const { status } = await Contacts.requestPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Allow contacts access in Settings to use this feature.');
-      return;
-    }
-
-    const { data } = await Contacts.getContactsAsync({
-      fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers],
-    });
-
-    // Show a simple list — in production this would be a searchable modal
-    // For now, just pick the first contact with a US phone for demo
-    Alert.alert('Contacts', 'Contact picker — implement a search modal in production');
-  }
 
   async function handleAddWorker() {
     if (!isValid || !activeLocation || !session) return;
@@ -164,9 +149,18 @@ export default function FirstWorkerScreen() {
         <Text style={styles.title}>Add your first worker</Text>
         <Text style={styles.subtitle}>You can add more from the Team screen later.</Text>
 
-        <TouchableOpacity style={styles.contactsButton} onPress={pickFromContacts}>
+        <TouchableOpacity style={styles.contactsButton} onPress={() => setShowContacts(true)}>
           <Text style={styles.contactsButtonText}>Import from Contacts</Text>
         </TouchableOpacity>
+
+        <ContactPickerSheet
+          visible={showContacts}
+          onClose={() => setShowContacts(false)}
+          onSelect={({ name: pickedName, digits: pickedDigits }) => {
+            setName(pickedName);
+            setPhone(formatUSPhone(pickedDigits));
+          }}
+        />
 
         <Text style={styles.orText}>— or enter manually —</Text>
 

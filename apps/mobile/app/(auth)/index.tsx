@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
   },
   logo: {
     fontSize: 40,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#0E7C7B',
     marginBottom: 8,
   },
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#ccc',
     marginBottom: 4,
   },
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
   countryCode: {
     fontSize: 16,
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '700',
   },
   input: {
     flex: 1,

@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 26,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#fff',
     marginBottom: 8,
   },
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   removeText: {
     color: '#ef4444',
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   addRow: {
     flexDirection: 'row',

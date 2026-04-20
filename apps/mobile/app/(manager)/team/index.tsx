@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     backgroundColor: '#1a1a2e',
   },
-  title: { fontSize: 24, fontWeight: '800', color: '#fff' },
+  title: { fontSize: 24, fontWeight: '700', color: '#fff' },
   workerCount: { fontSize: 12, color: '#7A8899', marginTop: 2 },
   addButton: {
     backgroundColor: '#F5853F',
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
   pendingText: { color: '#f59e0b', fontSize: 11, fontWeight: '700' },
   mutedBadge: { backgroundColor: '#6b728022', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
   mutedText: { color: '#6b7280', fontSize: 11, fontWeight: '700' },
-  roleText: { fontSize: 13, color: '#7A8899', fontWeight: '600' },
+  roleText: { fontSize: 13, color: '#7A8899', fontWeight: '700' },
   additionalRoles: { fontSize: 12, color: '#555' },
   phoneText: { fontSize: 12, color: '#555', marginTop: 2 },
   cardActions: {
@@ -303,6 +303,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: 'center',
   },
-  actionText: { fontSize: 13, color: '#7A8899', fontWeight: '600' },
+  actionText: { fontSize: 13, color: '#7A8899', fontWeight: '700' },
   removeText: { color: '#ef4444' },
 });

@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#2a2a40',
   },
-  title: { fontSize: 18, fontWeight: '800', color: '#fff' },
+  title: { fontSize: 18, fontWeight: '700', color: '#fff' },
   closeText: { color: '#0E7C7B', fontSize: 16, fontWeight: '700' },
   search: {
     backgroundColor: '#2a2a40',

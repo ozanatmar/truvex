@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     backgroundColor: '#1a1a2e',
   },
-  locationName: { fontSize: 20, fontWeight: '800', color: '#fff' },
+  locationName: { fontSize: 20, fontWeight: '700', color: '#fff' },
   postButton: {
     backgroundColor: '#F5853F',
     borderRadius: 10,
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderBottomWidth: 1,
   },
-  bannerText: { fontSize: 12, fontWeight: '600' },
+  bannerText: { fontSize: 12, fontWeight: '700' },
   scroll: { flex: 1 },
   scrollContent: { padding: 16, gap: 12 },
   empty: { alignItems: 'center', paddingTop: 80, gap: 8 },
@@ -268,8 +268,8 @@ const styles = StyleSheet.create({
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
   statusText: { fontSize: 12, fontWeight: '700' },
   shiftDate: { fontSize: 14, color: '#aaa' },
-  shiftTime: { fontSize: 14, color: '#ccc', fontWeight: '600' },
+  shiftTime: { fontSize: 14, color: '#ccc', fontWeight: '700' },
   notes: { fontSize: 13, color: '#666', fontStyle: 'italic' },
   cardActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8 },
-  cancelLink: { color: '#ef4444', fontSize: 13, fontWeight: '600' },
+  cancelLink: { color: '#ef4444', fontSize: 13, fontWeight: '700' },
 });

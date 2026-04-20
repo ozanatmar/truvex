@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     backgroundColor: '#1a1a2e',
   },
-  title: { fontSize: 24, fontWeight: '800', color: '#fff' },
+  title: { fontSize: 24, fontWeight: '700', color: '#fff' },
   subtitle: { fontSize: 13, color: '#666', marginTop: 2 },
   scroll: { flex: 1 },
   content: { padding: 16, gap: 12 },
@@ -251,10 +251,10 @@ const styles = StyleSheet.create({
   emptySubtitle: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 20 },
   card: { backgroundColor: '#1a1a2e', borderRadius: 18, padding: 16, gap: 6 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  roleName: { fontSize: 18, fontWeight: '800', color: '#fff' },
+  roleName: { fontSize: 18, fontWeight: '700', color: '#fff' },
   locationName: { fontSize: 12, color: '#666', textAlign: 'right', flex: 1, marginLeft: 8 },
   date: { fontSize: 14, color: '#aaa' },
-  time: { fontSize: 15, color: '#ccc', fontWeight: '600' },
+  time: { fontSize: 15, color: '#ccc', fontWeight: '700' },
   notes: { fontSize: 13, color: '#666', fontStyle: 'italic' },
   acceptedBanner: {
     backgroundColor: '#10b98122',
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
     padding: 12,
     marginTop: 8,
   },
-  acceptedText: { color: '#10b981', fontSize: 13, fontWeight: '600' },
+  acceptedText: { color: '#10b981', fontSize: 13, fontWeight: '700' },
   actions: { flexDirection: 'row', gap: 10, marginTop: 8 },
   acceptButton: {
     flex: 1,
@@ -282,5 +282,5 @@ const styles = StyleSheet.create({
   },
   actionDisabled: { opacity: 0.5 },
   acceptText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  declineText: { color: '#aaa', fontWeight: '600', fontSize: 15 },
+  declineText: { color: '#aaa', fontWeight: '700', fontSize: 15 },
 });

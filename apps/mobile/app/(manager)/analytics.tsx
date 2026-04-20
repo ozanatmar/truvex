@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     backgroundColor: '#1a1a2e',
   },
-  title: { fontSize: 24, fontWeight: '800', color: '#fff' },
+  title: { fontSize: 24, fontWeight: '700', color: '#fff' },
   subtitle: { fontSize: 13, color: '#7A8899', marginTop: 2 },
   scroll: { flex: 1 },
   content: { padding: 16, gap: 16, paddingBottom: 40 },
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32, gap: 16,
   },
   gateIcon: { fontSize: 52 },
-  gateTitle: { fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center' },
+  gateTitle: { fontSize: 22, fontWeight: '700', color: '#fff', textAlign: 'center' },
   gateBody: { fontSize: 15, color: '#7A8899', textAlign: 'center', lineHeight: 22 },
   gateBadge: {
     backgroundColor: '#10b98122', borderRadius: 20,
@@ -337,8 +337,8 @@ const styles = StyleSheet.create({
     flex: 1, backgroundColor: '#1a1a2e', borderRadius: 14,
     padding: 14, alignItems: 'center', gap: 4,
   },
-  summaryValue: { fontSize: 26, fontWeight: '800', color: '#fff' },
-  summaryLabel: { fontSize: 11, color: '#7A8899', fontWeight: '600', textTransform: 'uppercase' },
+  summaryValue: { fontSize: 26, fontWeight: '700', color: '#fff' },
+  summaryLabel: { fontSize: 11, color: '#7A8899', fontWeight: '700', textTransform: 'uppercase' },
 
   // Section
   section: { backgroundColor: '#1a1a2e', borderRadius: 14, padding: 16, gap: 12 },
@@ -349,11 +349,11 @@ const styles = StyleSheet.create({
   barColumn: { flex: 1, alignItems: 'center', gap: 4 },
   barTrack: { flex: 1, width: '100%', justifyContent: 'flex-end' },
   bar: { width: '100%', backgroundColor: '#0E7C7B', borderRadius: 4, minHeight: 4 },
-  barLabel: { fontSize: 10, color: '#7A8899', fontWeight: '600' },
+  barLabel: { fontSize: 10, color: '#7A8899', fontWeight: '700' },
 
   // Role bars
   roleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  roleName: { width: 72, fontSize: 13, color: '#aaa', fontWeight: '600' },
+  roleName: { width: 72, fontSize: 13, color: '#aaa', fontWeight: '700' },
   roleTrack: { flex: 1, height: 8, backgroundColor: '#2a2a40', borderRadius: 4, overflow: 'hidden' },
   roleBar: { height: '100%', backgroundColor: '#0E7C7B', borderRadius: 4 },
   roleCount: { width: 24, fontSize: 13, color: '#7A8899', textAlign: 'right' },
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
   tableHeader: { borderBottomWidth: 1, borderBottomColor: '#2a2a40' },
   tableHeaderText: { color: '#7A8899', fontSize: 11, fontWeight: '700', textTransform: 'uppercase' },
   tableCell: { flex: 1, fontSize: 13, color: '#ccc', textAlign: 'center' },
-  tableCellName: { flex: 2, textAlign: 'left', color: '#fff', fontWeight: '600' },
+  tableCellName: { flex: 2, textAlign: 'left', color: '#fff', fontWeight: '700' },
   acceptedText: { color: '#10b981', fontWeight: '700' },
   declinedText: { color: '#ef4444', fontWeight: '700' },
 });

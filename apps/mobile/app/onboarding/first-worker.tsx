@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 26,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#fff',
     marginBottom: 4,
   },
@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#aaa',
     marginBottom: 4,
     marginTop: 4,
@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
   countryCode: {
     fontSize: 16,
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '700',
   },
   phoneInput: {
     flex: 1,
@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
   roleChipText: {
     color: '#aaa',
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   roleChipTextSelected: {
     color: '#fff',

@@ -607,7 +607,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20, paddingTop: 60, paddingBottom: 20,
     backgroundColor: '#1a1a2e',
   },
-  title: { fontSize: 24, fontWeight: '800', color: '#fff' },
+  title: { fontSize: 24, fontWeight: '700', color: '#fff' },
   section: { padding: 20, gap: 12 },
   sectionLabel: { fontSize: 12, fontWeight: '700', color: '#555', textTransform: 'uppercase', letterSpacing: 1 },
   card: { backgroundColor: '#1a1a2e', borderRadius: 18, paddingHorizontal: 16 },
@@ -617,7 +617,7 @@ const styles = StyleSheet.create({
   },
   divider: { height: 1, backgroundColor: '#2a2a40', marginHorizontal: -16 },
   rowLabel: { fontSize: 15, color: '#aaa' },
-  rowValue: { fontSize: 15, color: '#fff', fontWeight: '600' },
+  rowValue: { fontSize: 15, color: '#fff', fontWeight: '700' },
   planRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingVertical: 14,
@@ -632,8 +632,8 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#2a2a40', gap: 4,
   },
   upgradeCardPro: { borderColor: '#0E7C7B' },
-  upgradePlan: { fontSize: 16, fontWeight: '800', color: '#fff', marginBottom: 2 },
-  upgradePrice: { fontSize: 20, fontWeight: '800', color: '#0E7C7B', marginBottom: 6 },
+  upgradePlan: { fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 2 },
+  upgradePrice: { fontSize: 20, fontWeight: '700', color: '#0E7C7B', marginBottom: 6 },
   upgradeFeature: { fontSize: 12, color: '#666' },
   actionButton: {
     backgroundColor: '#1a1a2e', borderRadius: 12, paddingVertical: 14,
@@ -643,6 +643,6 @@ const styles = StyleSheet.create({
   cancelSubText: { color: '#ef4444', fontSize: 13, textAlign: 'center', paddingVertical: 8 },
   deleteRestaurantText: { color: '#ef4444', fontSize: 13, textAlign: 'center', paddingVertical: 8 },
   signOutButton: { margin: 20, alignItems: 'center', paddingVertical: 14 },
-  signOutText: { color: '#ef4444', fontSize: 15, fontWeight: '600' },
+  signOutText: { color: '#ef4444', fontSize: 15, fontWeight: '700' },
   chevron: { fontSize: 20, color: '#555' },
 });

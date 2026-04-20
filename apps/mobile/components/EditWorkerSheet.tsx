@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
   title: { color: '#fff', fontSize: 17, fontWeight: '700' },
   save: { color: '#0E7C7B', fontSize: 16, fontWeight: '700' },
   content: { padding: 20, gap: 10 },
-  label: { fontSize: 13, fontWeight: '600', color: '#aaa', marginTop: 8, marginBottom: 4 },
+  label: { fontSize: 13, fontWeight: '700', color: '#aaa', marginTop: 8, marginBottom: 4 },
   input: {
     backgroundColor: '#1a1a2e',
     borderRadius: 10,
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
   roleChip: { borderWidth: 1, borderColor: '#333', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
   primaryChip: { backgroundColor: '#0E7C7B', borderColor: '#0E7C7B' },
   additionalChip: { backgroundColor: 'rgba(14,124,123,0.15)', borderColor: '#0E7C7B' },
-  roleChipText: { color: '#666', fontSize: 13, fontWeight: '600' },
+  roleChipText: { color: '#666', fontSize: 13, fontWeight: '700' },
   primaryChipText: { color: '#fff' },
   additionalChipText: { color: '#7ECACA' },
 });

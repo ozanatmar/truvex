@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     backgroundColor: '#1a1a2e',
   },
-  title: { fontSize: 24, fontWeight: '800', color: '#fff' },
+  title: { fontSize: 24, fontWeight: '700', color: '#fff' },
   businessBadge: {
     backgroundColor: '#10b98122',
     borderRadius: 20,
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32, gap: 16,
   },
   gateIcon: { fontSize: 52 },
-  gateTitle: { fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center' },
+  gateTitle: { fontSize: 22, fontWeight: '700', color: '#fff', textAlign: 'center' },
   gateBody: { fontSize: 15, color: '#7A8899', textAlign: 'center', lineHeight: 22 },
   upgradeButton: {
     backgroundColor: '#F5853F', borderRadius: 12,
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
   // Business form
   scroll: { flex: 1 },
   content: { padding: 20, gap: 14 },
-  formTitle: { fontSize: 20, fontWeight: '800', color: '#fff' },
+  formTitle: { fontSize: 20, fontWeight: '700', color: '#fff' },
   formSubtitle: { fontSize: 14, color: '#7A8899', lineHeight: 20 },
   textArea: {
     backgroundColor: '#1a1a2e',

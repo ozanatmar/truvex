@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../lib/store';
 import { formatShiftTime, formatShiftDate } from '../../lib/utils';
@@ -55,7 +56,7 @@ export default function WorkerHistoryScreen() {
     setRefreshing(false);
   }, [session]);
 
-  useEffect(() => { fetch(); }, [fetch]);
+  useFocusEffect(useCallback(() => { fetch(); }, [fetch]));
 
   if (loading) {
     return (

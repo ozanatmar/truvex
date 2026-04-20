@@ -17,6 +17,7 @@ import { useStore } from '../../lib/store';
 import { Location } from '../../types/database';
 import TutorialModal from '../../components/TutorialModal';
 import LoadingOverlay from '../../components/LoadingOverlay';
+import ManageRolesSheet from '../../components/ManageRolesSheet';
 import { useRouter } from 'expo-router';
 
 const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL ?? 'https://truvex.app';
@@ -69,6 +70,7 @@ export default function ManagerSettingsScreen() {
   } = useStore();
   const [location, setLocation] = useState<Location | null>(activeLocation);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [showRoles, setShowRoles] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [subActionLoading, setSubActionLoading] = useState<'upgrade' | 'manage' | 'cancel' | 'reactivate' | null>(null);
 
@@ -370,6 +372,11 @@ export default function ManagerSettingsScreen() {
         <Text style={styles.sectionLabel}>Restaurant</Text>
         <View style={styles.card}>
           <Row label="Name" value={loc?.name ?? '—'} />
+          <Divider />
+          <TouchableOpacity style={styles.row} onPress={() => setShowRoles(true)}>
+            <Text style={styles.rowLabel}>Roles</Text>
+            <Text style={styles.chevron}>›</Text>
+          </TouchableOpacity>
         </View>
         <TouchableOpacity onPress={handleDeleteRestaurant} disabled={deleting}>
           {deleting ? (
@@ -561,6 +568,7 @@ export default function ManagerSettingsScreen() {
     </ScrollView>
 
     <TutorialModal visible={showTutorial} role="manager" onClose={() => setShowTutorial(false)} />
+    <ManageRolesSheet visible={showRoles} onClose={() => setShowRoles(false)} onSaved={refresh} />
     <LoadingOverlay
       visible={subActionLoading !== null || deleting}
       message={

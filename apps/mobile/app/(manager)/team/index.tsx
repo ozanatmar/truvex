@@ -132,15 +132,6 @@ export default function TeamScreen() {
     );
   }
 
-  async function toggleMute(memberRowId: string, isMuted: boolean) {
-    await supabase
-      .schema('truvex').from('location_members')
-      .update({ is_muted: !isMuted })
-      .eq('id', memberRowId);
-
-    fetchWorkers();
-  }
-
   if (loading) {
     return (
       <View style={styles.center}>
@@ -231,14 +222,11 @@ export default function TeamScreen() {
                 </TouchableOpacity>
 
                 <View style={styles.cardActions}>
-                  <TouchableOpacity
-                    onPress={() => toggleMute(worker.member.id, worker.member.is_muted)}
-                    style={styles.actionButton}
-                  >
+                  <View style={styles.actionButton}>
                     <Text style={styles.actionText}>
-                      {worker.member.is_muted ? 'Unmute' : 'Mute'}
+                      {worker.member.is_muted ? 'Muted' : 'Notifications on'}
                     </Text>
-                  </TouchableOpacity>
+                  </View>
                   <TouchableOpacity
                     onPress={() => handleRemove(worker.member.id, worker.member.user_id, worker.name ?? worker.phone)}
                     style={styles.actionButton}

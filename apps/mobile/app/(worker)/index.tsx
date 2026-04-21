@@ -13,6 +13,7 @@ import { supabase } from '../../lib/supabase';
 import { useStore } from '../../lib/store';
 import { Callout, Role, Location } from '../../types/database';
 import { formatShiftTime, formatShiftDate } from '../../lib/utils';
+import ShiftResultBanners from '../../components/ShiftResultBanners';
 
 interface CalloutCard extends Callout {
   role: Role;
@@ -139,7 +140,7 @@ export default function WorkerHomeScreen() {
             .is('first_accepted_at', null);
         }
       }
-      fetchCallouts();
+      await fetchCallouts();
     }
 
     setResponding(null);
@@ -155,11 +156,24 @@ export default function WorkerHomeScreen() {
 
   const visibleCallouts = callouts.filter((c) => c.myResponse !== 'declined');
 
+  const groups = (() => {
+    const byLoc = new Map<string, { name: string; items: CalloutCard[] }>();
+    for (const c of visibleCallouts) {
+      const key = c.location.id;
+      const existing = byLoc.get(key);
+      if (existing) existing.items.push(c);
+      else byLoc.set(key, { name: c.location.name, items: [c] });
+    }
+    return Array.from(byLoc.entries()).map(([id, g]) => ({ id, ...g }));
+  })();
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Open Shifts</Text>
       </View>
+
+      <ShiftResultBanners role="worker" />
 
       <ScrollView
         style={styles.scroll}
@@ -180,51 +194,55 @@ export default function WorkerHomeScreen() {
             </Text>
           </View>
         ) : (
-          visibleCallouts.map((callout) => (
-            <View key={callout.id} style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.roleName}>{callout.role.name}</Text>
-                <Text style={styles.locationName}>{callout.location.name}</Text>
-              </View>
+          groups.map((group) => (
+            <View key={group.id} style={styles.group}>
+              <Text style={styles.groupHeader}>{group.name}</Text>
+              {group.items.map((callout) => (
+                <View key={callout.id} style={styles.card}>
+                  <View style={styles.cardHeader}>
+                    <Text style={styles.roleName}>{callout.role.name}</Text>
+                  </View>
 
-              <Text style={styles.date}>{formatShiftDate(callout.shift_date)}</Text>
-              <Text style={styles.time}>
-                {formatShiftTime(callout.start_time)} – {formatShiftTime(callout.end_time)}
-              </Text>
-
-              {callout.notes ? (
-                <Text style={styles.notes}>{callout.notes}</Text>
-              ) : null}
-
-              {callout.myResponse === 'accepted' ? (
-                <View style={styles.acceptedBanner}>
-                  <Text style={styles.acceptedText}>
-                    You accepted — waiting for manager to confirm
+                  <Text style={styles.date}>{formatShiftDate(callout.shift_date)}</Text>
+                  <Text style={styles.time}>
+                    {formatShiftTime(callout.start_time)} – {formatShiftTime(callout.end_time)}
                   </Text>
-                </View>
-              ) : (
-                <View style={styles.actions}>
-                  <TouchableOpacity
-                    style={[styles.acceptButton, responding === callout.id && styles.actionDisabled]}
-                    onPress={() => handleResponse(callout.id, 'accepted')}
-                    disabled={responding !== null}
-                  >
-                    {responding === callout.id ? (
-                      <ActivityIndicator color="#fff" size="small" />
-                    ) : (
-                      <Text style={styles.acceptText}>Accept</Text>
-                    )}
-                  </TouchableOpacity>
 
-                  <TouchableOpacity
-                    style={[styles.declineButton, responding === callout.id && styles.actionDisabled]}
-                    onPress={() => handleResponse(callout.id, 'declined')}
-                    disabled={responding !== null}
-                  >
-                    <Text style={styles.declineText}>Decline</Text>
-                  </TouchableOpacity>
+                  {callout.notes ? (
+                    <Text style={styles.notes}>{callout.notes}</Text>
+                  ) : null}
+
+                  {callout.myResponse === 'accepted' ? (
+                    <View style={styles.acceptedBanner}>
+                      <Text style={styles.acceptedText}>
+                        You accepted — waiting for manager to confirm
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={styles.actions}>
+                      <TouchableOpacity
+                        style={[styles.acceptButton, responding === callout.id && styles.actionDisabled]}
+                        onPress={() => handleResponse(callout.id, 'accepted')}
+                        disabled={responding !== null}
+                      >
+                        {responding === callout.id ? (
+                          <ActivityIndicator color="#fff" size="small" />
+                        ) : (
+                          <Text style={styles.acceptText}>Accept</Text>
+                        )}
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.declineButton, responding === callout.id && styles.actionDisabled]}
+                        onPress={() => handleResponse(callout.id, 'declined')}
+                        disabled={responding !== null}
+                      >
+                        <Text style={styles.declineText}>Decline</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
-              )}
+              ))}
             </View>
           ))
         )}
@@ -245,7 +263,9 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontWeight: '800', color: '#fff' },
   subtitle: { fontSize: 13, color: '#666', marginTop: 2 },
   scroll: { flex: 1 },
-  content: { padding: 16, gap: 12 },
+  content: { padding: 16, gap: 20 },
+  group: { gap: 10 },
+  groupHeader: { color: '#7ECACA', fontSize: 13, fontWeight: '800', letterSpacing: 0.5, marginBottom: 2 },
   empty: { alignItems: 'center', paddingTop: 80, gap: 8, paddingHorizontal: 16 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: '#fff', minWidth: 180, textAlign: 'center' },
   emptySubtitle: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 20, alignSelf: 'stretch' },

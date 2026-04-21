@@ -17,44 +17,36 @@ import TutorialModal from '../../components/TutorialModal';
 
 export default function WorkerSettingsScreen() {
   const { session, profile, activeLocation, setActiveLocation, setMemberType, reset } = useStore();
-  const [isMuted, setIsMuted] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [toggling, setToggling] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   const [memberships, setMemberships] = useState<any[]>([]);
   const [showTutorial, setShowTutorial] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!session) return;
 
-    const [muteRes, memberRes] = await Promise.all([
-      supabase.schema('truvex').from('location_members')
-        .select('is_muted')
-        .eq('user_id', session.user.id)
-        .eq('location_id', activeLocation?.id ?? '')
-        .maybeSingle(),
-      supabase.schema('truvex').from('location_members')
-        .select('*, location:locations(*)')
-        .eq('user_id', session.user.id)
-        .eq('member_type', 'worker')
-        .eq('status', 'active'),
-    ]);
+    const { data } = await supabase.schema('truvex').from('location_members')
+      .select('*, location:locations(*)')
+      .eq('user_id', session.user.id)
+      .eq('member_type', 'worker')
+      .eq('status', 'active');
 
-    if (muteRes.data) setIsMuted(muteRes.data.is_muted);
-    if (memberRes.data) setMemberships(memberRes.data);
+    if (data) setMemberships(data);
     setLoading(false);
-  }, [session, activeLocation]);
+  }, [session]);
 
   useFocusEffect(useCallback(() => { fetchData(); }, [fetchData]));
 
-  async function handleToggleMute(value: boolean) {
-    if (!session || !activeLocation) return;
-    setToggling(true);
+  async function handleToggleMute(membershipId: string, value: boolean) {
+    if (!session) return;
+    setTogglingId(membershipId);
     const { error } = await supabase.schema('truvex').from('location_members')
       .update({ is_muted: value })
-      .eq('user_id', session.user.id)
-      .eq('location_id', activeLocation.id);
-    if (!error) setIsMuted(value);
-    setToggling(false);
+      .eq('id', membershipId);
+    if (!error) {
+      setMemberships(memberships.map((m: any) => m.id === membershipId ? { ...m, is_muted: value } : m));
+    }
+    setTogglingId(null);
   }
 
   function confirmLeave(locationId: string, locationName: string) {
@@ -146,24 +138,41 @@ export default function WorkerSettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>NOTIFICATIONS</Text>
           <View style={styles.card}>
-            <View style={styles.settingRow}>
-              <View style={styles.settingTextWrap}>
-                <Text style={styles.settingTitle}>Mute notifications</Text>
-                <Text style={styles.settingSubtitle}>
-                  Stop receiving push and SMS alerts for {activeLocation?.name}
-                </Text>
-              </View>
-              {loading || toggling ? (
+            {loading ? (
+              <View style={styles.row}>
                 <ActivityIndicator color="#0E7C7B" />
-              ) : (
-                <Switch
-                  value={isMuted}
-                  onValueChange={handleToggleMute}
-                  trackColor={{ false: '#333', true: '#0E7C7B' }}
-                  thumbColor="#fff"
-                />
-              )}
-            </View>
+              </View>
+            ) : memberships.length === 0 ? (
+              <View style={styles.row}>
+                <Text style={styles.rowLabel}>No locations</Text>
+              </View>
+            ) : (
+              memberships.map((m: any, i: number) => (
+                <View key={m.id}>
+                  {i > 0 && <View style={styles.divider} />}
+                  <View style={styles.settingRow}>
+                    <View style={styles.settingTextWrap}>
+                      <Text style={styles.settingTitle} numberOfLines={1} ellipsizeMode="tail">
+                        Mute {m.location?.name}
+                      </Text>
+                      <Text style={styles.settingSubtitle}>
+                        Stop push and SMS alerts
+                      </Text>
+                    </View>
+                    {togglingId === m.id ? (
+                      <ActivityIndicator color="#0E7C7B" />
+                    ) : (
+                      <Switch
+                        value={m.is_muted}
+                        onValueChange={(v) => handleToggleMute(m.id, v)}
+                        trackColor={{ false: '#333', true: '#0E7C7B' }}
+                        thumbColor="#fff"
+                      />
+                    )}
+                  </View>
+                </View>
+              ))
+            )}
           </View>
         </View>
 
@@ -182,9 +191,6 @@ export default function WorkerSettingsScreen() {
                   <View style={styles.locationRow}>
                     <View style={styles.locationInfo}>
                       <Text style={styles.locationName} numberOfLines={1} ellipsizeMode="tail">{m.location?.name}</Text>
-                      {m.location_id === activeLocation?.id && (
-                        <Text style={styles.activeLabel}>Active</Text>
-                      )}
                     </View>
                     <TouchableOpacity
                       onPress={() => confirmLeave(m.location_id, m.location?.name)}

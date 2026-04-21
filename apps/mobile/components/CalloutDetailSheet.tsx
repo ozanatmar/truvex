@@ -8,6 +8,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { formatShiftTime, formatShiftDate, formatPhoneDisplay } from '../lib/utils';
 
@@ -56,6 +57,7 @@ function formatTimestamp(ts: string | null): string {
 }
 
 export default function CalloutDetailSheet({ visible, calloutId, onClose }: Props) {
+  const insets = useSafeAreaInsets();
   const [detail, setDetail] = useState<Detail | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -117,7 +119,7 @@ export default function CalloutDetailSheet({ visible, calloutId, onClose }: Prop
       onRequestClose={onClose}
     >
       <View style={styles.container}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
           <TouchableOpacity
             onPress={onClose}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -223,7 +225,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 24,
     paddingBottom: 16,
     backgroundColor: '#1a1a2e',
   },

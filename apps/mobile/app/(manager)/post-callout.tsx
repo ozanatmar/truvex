@@ -17,23 +17,13 @@ import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../lib/store';
 import { Role } from '../../types/database';
+import TimePickerSheet from '../../components/TimePickerSheet';
 
 interface ShiftPreset {
   id: string;
   label: string;
   start_time: string;
   end_time: string;
-}
-
-function timeStringToDate(t: string): Date {
-  const [h, m] = t.split(':').map(Number);
-  const d = new Date();
-  d.setHours(h, m, 0, 0);
-  return d;
-}
-
-function dateToTimeString(d: Date): string {
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
 function formatTimeDisplay(t: string): string {
@@ -174,6 +164,12 @@ export default function PostCalloutScreen() {
           </View>
         </View>
 
+        {startTime && endTime && endTime <= startTime && (
+          <Text style={styles.nextDayNote}>
+            Shift ends the next day — is that right?
+          </Text>
+        )}
+
         {/* Presets */}
         {presets.length > 0 && (
           <>
@@ -244,33 +240,22 @@ export default function PostCalloutScreen() {
         </PickerModal>
       )}
 
-      {/* Start time picker */}
-      {showStartPicker && (
-        <PickerModal title="Start time" onDone={() => setShowStartPicker(false)}>
-          <DateTimePicker
-            value={startTime ? timeStringToDate(startTime) : new Date()}
-            mode="time"
-            display={pickerDisplay}
-            is24Hour={false}
-            onChange={(_, d) => { if (d) setStartTime(dateToTimeString(d)); if (Platform.OS === 'android') setShowStartPicker(false); }}
-            style={styles.picker}
-          />
-        </PickerModal>
-      )}
+      <TimePickerSheet
+        visible={showStartPicker}
+        title="Start time"
+        value={startTime}
+        onSelect={setStartTime}
+        onClose={() => setShowStartPicker(false)}
+      />
 
-      {/* End time picker */}
-      {showEndPicker && (
-        <PickerModal title="End time" onDone={() => setShowEndPicker(false)}>
-          <DateTimePicker
-            value={endTime ? timeStringToDate(endTime) : new Date()}
-            mode="time"
-            display={pickerDisplay}
-            is24Hour={false}
-            onChange={(_, d) => { if (d) setEndTime(dateToTimeString(d)); if (Platform.OS === 'android') setShowEndPicker(false); }}
-            style={styles.picker}
-          />
-        </PickerModal>
-      )}
+      <TimePickerSheet
+        visible={showEndPicker}
+        title="End time"
+        value={endTime}
+        afterTime={startTime || undefined}
+        onSelect={setEndTime}
+        onClose={() => setShowEndPicker(false)}
+      />
 
       {/* Save preset modal */}
       <Modal visible={showSavePreset} transparent animationType="fade">
@@ -340,22 +325,24 @@ const styles = StyleSheet.create({
   pickerButtonText: { color: '#fff', fontSize: 15 },
   timeRow: { flexDirection: 'row', gap: 12 },
   timeField: { flex: 1 },
-  presetRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  presetChipWrap: { flexDirection: 'row', alignItems: 'center' },
+  presetRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, paddingTop: 8, paddingRight: 8 },
+  presetChipWrap: { position: 'relative' },
   presetChip: {
     backgroundColor: '#1a1a2e', borderWidth: 1, borderColor: '#0E7C7B',
-    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, borderRightWidth: 0,
-    borderTopRightRadius: 0, borderBottomRightRadius: 0,
+    borderRadius: 10, paddingLeft: 12, paddingRight: 14, paddingVertical: 8,
   },
   presetLabel: { color: '#7ECACA', fontSize: 12, fontWeight: '700' },
   presetTime: { color: '#fff', fontSize: 11, marginTop: 2 },
   presetDelete: {
-    backgroundColor: '#1a1a2e', borderWidth: 1, borderColor: '#0E7C7B', borderLeftWidth: 0,
-    borderTopRightRadius: 10, borderBottomRightRadius: 10,
-    paddingHorizontal: 10, paddingVertical: 8, justifyContent: 'center',
+    position: 'absolute', top: -8, right: -8,
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: '#ef4444',
+    alignItems: 'center', justifyContent: 'center',
+    zIndex: 2,
   },
-  presetDeleteText: { color: '#ef4444', fontSize: 16, fontWeight: '700' },
+  presetDeleteText: { color: '#fff', fontSize: 14, fontWeight: '800', lineHeight: 16 },
   savePresetLink: { color: '#0E7C7B', fontSize: 13, fontWeight: '600', marginTop: 4 },
+  nextDayNote: { color: '#f59e0b', fontSize: 13, fontWeight: '600', marginTop: 2 },
   roleGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   roleChip: { borderWidth: 1, borderColor: '#333', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
   roleChipSelected: { backgroundColor: '#0E7C7B', borderColor: '#0E7C7B' },

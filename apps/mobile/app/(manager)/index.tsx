@@ -15,6 +15,7 @@ import { useStore } from '../../lib/store';
 import { CalloutWithRole, Location } from '../../types/database';
 import { formatShiftTime } from '../../lib/utils';
 import LocationPickerSheet from '../../components/LocationPickerSheet';
+import ShiftResultBanners from '../../components/ShiftResultBanners';
 
 const STATUS_LABELS: Record<string, string> = {
   open: 'Open',
@@ -175,6 +176,8 @@ export default function ManagerHomeScreen() {
         </TouchableOpacity>
       )}
 
+      <ShiftResultBanners role="manager" />
+
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -243,14 +246,15 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     backgroundColor: '#1a1a2e',
   },
-  locationName: { fontSize: 20, fontWeight: '800', color: '#fff' },
+  locationName: { fontSize: 20, fontWeight: '800', color: '#fff', flexShrink: 1, marginRight: 12 },
   postButton: {
     backgroundColor: '#F5853F',
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 10,
+    flexShrink: 0,
   },
-  postButtonText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  postButtonText: { color: '#fff', fontWeight: '700', fontSize: 14, minWidth: 110, textAlign: 'center' },
   banner: {
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -259,17 +263,17 @@ const styles = StyleSheet.create({
   bannerText: { fontSize: 12, fontWeight: '600' },
   scroll: { flex: 1 },
   scrollContent: { padding: 16, gap: 12 },
-  empty: { alignItems: 'center', paddingTop: 80, gap: 8 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
-  emptySubtitle: { fontSize: 14, color: '#666' },
+  empty: { alignItems: 'center', paddingTop: 80, gap: 8, paddingHorizontal: 16 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#fff', minWidth: 200, textAlign: 'center' },
+  emptySubtitle: { fontSize: 14, color: '#666', textAlign: 'center', alignSelf: 'stretch' },
   card: { backgroundColor: '#1a1a2e', borderRadius: 18, padding: 16, gap: 6 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  roleName: { fontSize: 17, fontWeight: '700', color: '#fff' },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-  statusText: { fontSize: 12, fontWeight: '700' },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, gap: 8 },
+  roleName: { fontSize: 17, fontWeight: '700', color: '#fff', flexShrink: 1, minWidth: 80 },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, flexShrink: 0 },
+  statusText: { fontSize: 12, fontWeight: '700', minWidth: 96, textAlign: 'center' },
   shiftDate: { fontSize: 14, color: '#aaa' },
   shiftTime: { fontSize: 14, color: '#ccc', fontWeight: '600' },
   notes: { fontSize: 13, color: '#666', fontStyle: 'italic' },
   cardActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8 },
-  cancelLink: { color: '#ef4444', fontSize: 13, fontWeight: '600' },
+  cancelLink: { color: '#ef4444', fontSize: 13, fontWeight: '600', minWidth: 90, textAlign: 'right' },
 });

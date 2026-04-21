@@ -1,7 +1,11 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../lib/store';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const CONTENT_WIDTH = SCREEN_WIDTH - 64;
+const TITLE_FONT_SIZE = SCREEN_WIDTH < 380 ? 20 : 24;
 
 export default function NoLocationScreen() {
   const router = useRouter();
@@ -18,14 +22,10 @@ export default function NoLocationScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.textRow}>
-        <Text style={styles.title}>You're not linked to a location</Text>
-      </View>
-      <View style={styles.textRow}>
-        <Text style={styles.body}>
-          Ask your manager to add you, or set up your own restaurant.
-        </Text>
-      </View>
+      <Text style={styles.title}>You're not linked to a location</Text>
+      <Text style={styles.body}>
+        Ask your manager to add you, or set up your own restaurant.
+      </Text>
 
       <TouchableOpacity style={styles.primaryButton} onPress={handleSetupRestaurant}>
         <Text style={styles.primaryButtonText}>Set up my restaurant</Text>
@@ -46,24 +46,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     gap: 16,
   },
-  textRow: {
-    flexDirection: 'row',
-  },
   title: {
-    fontSize: 24,
+    fontSize: TITLE_FONT_SIZE,
     fontWeight: '800',
     color: '#fff',
     marginBottom: 8,
-    flex: 1,
-    flexWrap: 'wrap',
+    width: CONTENT_WIDTH,
   },
   body: {
     fontSize: 15,
     color: '#7A8899',
     lineHeight: 22,
     marginBottom: 16,
-    flex: 1,
-    flexWrap: 'wrap',
+    width: CONTENT_WIDTH,
   },
   primaryButton: {
     backgroundColor: '#0E7C7B',

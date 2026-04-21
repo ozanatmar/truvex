@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
   card: { backgroundColor: '#1a1a2e', borderRadius: 18, padding: 16, gap: 4 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   roleName: { fontSize: 16, fontWeight: '700', color: '#fff', flex: 1, marginRight: 8 },
-  status: { fontSize: 12, color: '#aaa', fontWeight: '600', minWidth: 72, textAlign: 'right' },
+  status: { fontSize: 12, color: '#aaa', fontWeight: '600', minWidth: 130, textAlign: 'right' },
   statusFilled: { color: '#10b981' },
   statusCancelled: { color: '#6b7280' },
   locationName: { fontSize: 13, color: '#666' },

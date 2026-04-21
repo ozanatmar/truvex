@@ -281,6 +281,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   actionDisabled: { opacity: 0.5 },
-  acceptText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  declineText: { color: '#aaa', fontWeight: '600', fontSize: 15 },
+  acceptText: { color: '#fff', fontWeight: '700', fontSize: 15, minWidth: 80, textAlign: 'center' },
+  declineText: { color: '#aaa', fontWeight: '600', fontSize: 15, minWidth: 80, textAlign: 'center' },
 });

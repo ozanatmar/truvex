@@ -28,8 +28,11 @@
       },
       "package": "app.truvex.mobile",
       "backgroundColor": "#0f0f1a",
+      "googleServicesFile": "./google-services.json",
       "permissions": [
-        "READ_CONTACTS"
+        "READ_CONTACTS",
+        "android.permission.READ_CONTACTS",
+        "android.permission.WRITE_CONTACTS"
       ]
     },
     "web": {
@@ -58,6 +61,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "749c41de-d277-43f1-8c61-8be5e5ddcfcf"
+      }
+    },
+    "owner": "ozanatmar"
   }
 }

@@ -118,8 +118,13 @@ export default function PostCalloutScreen() {
       status: 'open',
     });
 
+    if (error) {
+      setLoading(false);
+      Alert.alert('Error', error.message ?? 'Failed to post callout');
+      return;
+    }
+
     setLoading(false);
-    if (error) { Alert.alert('Error', error.message); return; }
     router.back();
   }
 

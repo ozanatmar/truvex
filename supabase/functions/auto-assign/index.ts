@@ -3,309 +3,259 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const TWILIO_ACCOUNT_SID = Deno.env.get('TWILIO_ACCOUNT_SID')!;
-const TWILIO_AUTH_TOKEN = Deno.env.get('TWILIO_AUTH_TOKEN')!;
-const TWILIO_PHONE_NUMBER = Deno.env.get('TWILIO_PHONE_NUMBER')!;
 const EXPO_ACCESS_TOKEN = Deno.env.get('EXPO_ACCESS_TOKEN');
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 serve(async (_req) => {
+  const trace: any[] = [];
   try {
-    const now = new Date().toISOString();
-
+    const now = new Date();
     await Promise.all([
-      handleAutoAssign(now),
-      handleNoResponseEscalation(now),
-      handleSelectionNudge(now),
-      handleSMSFallback(now),
+      handleAutoAssign(now, trace),
+      handleNoResponseEscalation(now, trace),
+      handleOneHourReminder(now, trace),
     ]);
-
-    return new Response('ok', { status: 200 });
+    return new Response(JSON.stringify({ ok: true, trace }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   } catch (err) {
     console.error('auto-assign error:', err);
-    return new Response(String(err), { status: 500 });
+    return new Response(JSON.stringify({ ok: false, error: String(err), trace }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 });
 
 // =====================================================================
 // 30-minute auto-assignment
+//
+// Only updates the callout row. The send-notification webhook on
+// callouts UPDATE fires rows 4b (assigned worker) + 5 (other acceptors).
 // =====================================================================
-async function handleAutoAssign(now: string) {
+async function handleAutoAssign(now: Date, trace: any[]) {
+  const nowIso = now.toISOString();
   const { data: callouts } = await supabase
-    .from('truvex.callouts')
-    .select('*, role:truvex.roles(name), location:truvex.locations(name, subscription_tier)')
+    .schema('truvex').from('callouts')
+    .select('id')
     .eq('status', 'pending_selection')
-    .lte('auto_assign_at', now);
+    .lte('auto_assign_at', nowIso);
 
   if (!callouts || callouts.length === 0) return;
+  trace.push({ step: 'auto_assign_candidates', count: callouts.length });
 
-  for (const callout of callouts) {
-    // Get earliest acceptor
+  for (const c of callouts) {
     const { data: responses } = await supabase
-      .from('truvex.callout_responses')
-      .select('worker_id, responded_at, worker:truvex.profiles(phone, expo_push_token)')
-      .eq('callout_id', callout.id)
+      .schema('truvex').from('callout_responses')
+      .select('worker_id, responded_at')
+      .eq('callout_id', c.id)
       .eq('response', 'accepted')
       .order('responded_at', { ascending: true })
       .limit(1);
 
     if (!responses || responses.length === 0) {
-      // No acceptors — expire callout
-      await supabase
-        .from('truvex.callouts')
+      await supabase.schema('truvex').from('callouts')
         .update({ status: 'expired' })
-        .eq('id', callout.id);
+        .eq('id', c.id);
+      trace.push({ step: 'auto_assign_expired', callout_id: c.id });
       continue;
     }
 
     const winner = responses[0];
-
-    // Assign the shift
-    await supabase
-      .from('truvex.callouts')
+    await supabase.schema('truvex').from('callouts')
       .update({
         assigned_worker_id: winner.worker_id,
-        assigned_at: now,
+        assigned_at: nowIso,
         assigned_by: 'auto',
         status: 'filled',
       })
-      .eq('id', callout.id);
-
-    // Notify assigned worker
-    const assignedMsg = `You've been automatically assigned the ${(callout as any).role.name} shift on ${callout.shift_date} at ${formatTime(callout.start_time)}.`;
-    await notifyWorker(winner.worker_id, (winner as any).worker, assignedMsg, callout.id, 'selected');
-
-    // Notify all other acceptors
-    const { data: allResponses } = await supabase
-      .from('truvex.callout_responses')
-      .select('worker_id, worker:truvex.profiles(phone, expo_push_token)')
-      .eq('callout_id', callout.id)
-      .eq('response', 'accepted')
-      .neq('worker_id', winner.worker_id);
-
-    if (allResponses) {
-      for (const r of allResponses) {
-        await notifyWorker(
-          r.worker_id,
-          (r as any).worker,
-          'This shift has been filled by someone else.',
-          callout.id,
-          'not_selected'
-        );
-      }
-    }
-
-    // Notify all notified workers that shift is filled
-    const filledMsg = `The ${(callout as any).role.name} shift on ${callout.shift_date} has been filled.`;
-    const { data: notified } = await supabase
-      .from('truvex.notification_log')
-      .select('user_id, user:truvex.profiles(phone, expo_push_token)')
-      .eq('callout_id', callout.id)
-      .eq('type', 'callout_posted');
-
-    if (notified) {
-      const notifiedIds = new Set(notified.map((n: any) => n.user_id));
-      notifiedIds.delete(winner.worker_id);
-      for (const n of notified) {
-        if (n.user_id !== winner.worker_id) {
-          await notifyWorker(n.user_id, (n as any).user, filledMsg, callout.id, 'shift_filled');
-        }
-      }
-    }
+      .eq('id', c.id);
+    trace.push({ step: 'auto_assigned', callout_id: c.id, worker_id: winner.worker_id });
   }
 }
 
 // =====================================================================
-// 15-minute no-response escalation
+// Row 3: 15-minute no-response escalation → manager
 // =====================================================================
-async function handleNoResponseEscalation(now: string) {
-  const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+async function handleNoResponseEscalation(now: Date, trace: any[]) {
+  const fifteenMinAgo = new Date(now.getTime() - 15 * 60 * 1000).toISOString();
 
   const { data: callouts } = await supabase
-    .from('truvex.callouts')
-    .select('*, role:truvex.roles(name), manager:truvex.profiles(phone, expo_push_token)')
+    .schema('truvex').from('callouts')
+    .select('id, manager_id, location_id, role_id, shift_date, start_time')
     .eq('status', 'open')
     .is('first_accepted_at', null)
     .lte('created_at', fifteenMinAgo);
 
-  if (!callouts) return;
+  if (!callouts || callouts.length === 0) return;
+  trace.push({ step: 'row3_candidates', count: callouts.length });
 
-  for (const callout of callouts) {
-    // Check if we already sent this escalation
-    const { data: existing } = await supabase
-      .from('truvex.notification_log')
-      .select('id')
-      .eq('callout_id', callout.id)
-      .eq('type', 'no_response_escalation')
-      .limit(1);
+  for (const c of callouts) {
+    const { count: existing } = await supabase
+      .schema('truvex').from('notification_log')
+      .select('id', { count: 'exact', head: true })
+      .eq('callout_id', c.id)
+      .eq('type', 'no_response_escalation');
+    if ((existing ?? 0) > 0) continue;
 
-    if (existing && existing.length > 0) continue;
+    const location = await fetchLocation(c.location_id);
+    if (!location || !isPaidOrTrialing(location)) continue;
 
-    const msg = `No one has accepted the ${(callout as any).role.name} shift yet.`;
-    await notifyUser(callout.manager_id, (callout as any).manager, msg, callout.id, 'no_response_escalation');
+    const role = await fetchRole(c.role_id);
+    const manager = await fetchProfile(c.manager_id);
+    if (!manager?.expo_push_token) continue;
+
+    const msg = `No one has accepted the ${role?.name ?? ''} shift on ${formatShiftDate(c.shift_date)} at ${formatTime(c.start_time)} yet. You may want to reach out or post again.`;
+    await sendPushAndLog(
+      [{ user_id: manager.id, token: manager.expo_push_token }],
+      msg,
+      { callout_id: c.id, type: 'no_response_escalation' },
+      c.id,
+      'no_response_escalation',
+      trace,
+    );
   }
 }
 
 // =====================================================================
-// 5-minute "please select" nudge after first acceptance
+// Row 9: 1-hour shift reminder → assigned worker
+//
+// Fires when a filled callout's shift is ~1 hour away, but only if the
+// worker was assigned more than 3 hours before the shift starts.
+// TZ caveat: shift_date + start_time is treated as UTC for now.
+// Fix by adding locations.timezone and localizing the timestamp.
 // =====================================================================
-async function handleSelectionNudge(now: string) {
-  const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+async function handleOneHourReminder(now: Date, trace: any[]) {
+  // Find filled callouts whose (shift_date + start_time) is between 50 and 70 min from now.
+  // Cron runs every minute; a 20-min window avoids double-fire races and log-check handles idempotency.
+  const lowerMs = now.getTime() + 50 * 60 * 1000;
+  const upperMs = now.getTime() + 70 * 60 * 1000;
+
+  const today = now.toISOString().slice(0, 10);
+  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
   const { data: callouts } = await supabase
-    .from('truvex.callouts')
-    .select('*, role:truvex.roles(name), manager:truvex.profiles(phone, expo_push_token)')
-    .eq('status', 'pending_selection')
-    .lte('first_accepted_at', fiveMinAgo);
+    .schema('truvex').from('callouts')
+    .select('id, assigned_worker_id, assigned_at, location_id, role_id, shift_date, start_time')
+    .eq('status', 'filled')
+    .in('shift_date', [today, tomorrow])
+    .not('assigned_worker_id', 'is', null);
 
-  if (!callouts) return;
+  if (!callouts || callouts.length === 0) return;
+  trace.push({ step: 'row9_candidates', count: callouts.length });
 
-  for (const callout of callouts) {
-    // Check if we already sent selection_needed for this callout
-    const { data: existing } = await supabase
-      .from('truvex.notification_log')
-      .select('id')
-      .eq('callout_id', callout.id)
-      .eq('type', 'selection_needed')
-      .limit(1);
+  for (const c of callouts) {
+    const shiftStart = new Date(`${c.shift_date}T${c.start_time}Z`).getTime();
+    if (isNaN(shiftStart)) continue;
+    if (shiftStart < lowerMs || shiftStart > upperMs) continue;
 
-    if (existing && existing.length > 0) continue;
+    // 3-hour gate: assigned_at must be > 3h before shift_start
+    if (c.assigned_at) {
+      const assignedMs = new Date(c.assigned_at).getTime();
+      if (shiftStart - assignedMs <= 3 * 60 * 60 * 1000) {
+        trace.push({ step: 'row9_skipped_within_3h', callout_id: c.id });
+        continue;
+      }
+    }
 
-    // Count acceptors
-    const { count } = await supabase
-      .from('truvex.callout_responses')
+    const { count: existing } = await supabase
+      .schema('truvex').from('notification_log')
       .select('id', { count: 'exact', head: true })
-      .eq('callout_id', callout.id)
-      .eq('response', 'accepted');
+      .eq('callout_id', c.id)
+      .eq('type', 'shift_reminder');
+    if ((existing ?? 0) > 0) continue;
 
-    const n = count ?? 0;
-    const msg = `${n} worker${n === 1 ? '' : 's'} accepted the ${(callout as any).role.name} shift. Please select who will cover.`;
-    await notifyUser(callout.manager_id, (callout as any).manager, msg, callout.id, 'selection_needed');
-  }
-}
+    const location = await fetchLocation(c.location_id);
+    if (!location || !isPaidOrTrialing(location)) continue;
 
-// =====================================================================
-// 2-minute SMS fallback for unopened push notifications
-// =====================================================================
-async function handleSMSFallback(now: string) {
-  const twoMinAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+    const role = await fetchRole(c.role_id);
+    const worker = await fetchProfile(c.assigned_worker_id);
+    if (!worker?.expo_push_token) continue;
 
-  // Find push notifications sent more than 2 min ago that haven't been opened
-  const { data: pendingPush } = await supabase
-    .from('truvex.notification_log')
-    .select('user_id, callout_id, user:truvex.profiles(phone)')
-    .eq('channel', 'push')
-    .eq('type', 'callout_posted')
-    .is('opened_at', null)
-    .lte('sent_at', twoMinAgo);
-
-  if (!pendingPush || pendingPush.length === 0) return;
-
-  for (const log of pendingPush) {
-    // Check if SMS already sent for this user+callout
-    const { data: existingSms } = await supabase
-      .from('truvex.notification_log')
-      .select('id')
-      .eq('user_id', log.user_id)
-      .eq('callout_id', log.callout_id)
-      .eq('channel', 'sms')
-      .eq('type', 'callout_posted')
-      .limit(1);
-
-    if (existingSms && existingSms.length > 0) continue;
-
-    // Get callout details for message
-    const { data: callout } = await supabase
-      .from('truvex.callouts')
-      .select('*, role:truvex.roles(name), location:truvex.locations(name)')
-      .eq('id', log.callout_id)
-      .single();
-
-    if (!callout || callout.status !== 'open') continue;
-
-    const shiftDate = new Date(callout.shift_date + 'T00:00:00').toLocaleDateString('en-US', {
-      weekday: 'short', month: 'short', day: 'numeric',
-    });
-    const startTime = formatTime(callout.start_time);
-    const endTime = formatTime(callout.end_time);
-    const msg = `New shift available: ${(callout as any).role.name} on ${shiftDate} ${startTime}–${endTime}. Open Truvex to accept.`;
-
-    await sendTwilioSMS((log as any).user.phone, msg);
-
-    await supabase.from('truvex.notification_log').insert({
-      user_id: log.user_id,
-      callout_id: log.callout_id,
-      channel: 'sms',
-      type: 'callout_posted',
-    });
+    const msg = `Reminder: your ${role?.name ?? ''} shift at ${location.name} starts in 1 hour.`;
+    await sendPushAndLog(
+      [{ user_id: worker.id, token: worker.expo_push_token }],
+      msg,
+      { callout_id: c.id, type: 'shift_reminder' },
+      c.id,
+      'shift_reminder',
+      trace,
+    );
   }
 }
 
 // =====================================================================
 // Helpers
 // =====================================================================
-
-async function notifyWorker(
-  userId: string,
-  user: { phone: string; expo_push_token: string | null },
-  message: string,
-  calloutId: string,
-  type: string
-) {
-  return notifyUser(userId, user, message, calloutId, type);
+async function fetchLocation(id: string) {
+  const { data } = await supabase
+    .schema('truvex').from('locations')
+    .select('id, name, subscription_tier, subscription_status, trial_ends_at')
+    .eq('id', id).single();
+  return data;
 }
 
-async function notifyUser(
-  userId: string,
-  user: { phone: string; expo_push_token: string | null },
-  message: string,
+async function fetchRole(id: string) {
+  const { data } = await supabase
+    .schema('truvex').from('roles').select('id, name').eq('id', id).single();
+  return data;
+}
+
+async function fetchProfile(id: string) {
+  const { data } = await supabase
+    .schema('truvex').from('profiles')
+    .select('id, phone, name, expo_push_token')
+    .eq('id', id).single();
+  return data;
+}
+
+function isPaidOrTrialing(location: any): boolean {
+  const isPaid = location.subscription_tier === 'pro' || location.subscription_tier === 'business';
+  const trialActive =
+    location.subscription_status === 'trialing' &&
+    location.trial_ends_at &&
+    new Date(location.trial_ends_at).getTime() > Date.now();
+  return isPaid || trialActive;
+}
+
+async function sendPushAndLog(
+  recipients: { user_id: string; token: string | null | undefined }[],
+  body: string,
+  data: Record<string, unknown>,
   calloutId: string | null,
-  type: string
+  type: string,
+  trace: any[],
 ) {
-  if (user.expo_push_token) {
-    await sendExpoPush([user.expo_push_token], message, { callout_id: calloutId });
-    await supabase.from('truvex.notification_log').insert({
-      user_id: userId,
-      callout_id: calloutId,
-      channel: 'push',
-      type,
-    });
-  } else {
-    await sendTwilioSMS(user.phone, message);
-    await supabase.from('truvex.notification_log').insert({
-      user_id: userId,
-      callout_id: calloutId,
-      channel: 'sms',
-      type,
-    });
-  }
-}
+  const withToken = recipients.filter((r) => !!r.token);
+  if (withToken.length === 0) return;
 
-async function sendExpoPush(tokens: string[], body: string, data: Record<string, unknown>) {
-  const messages = tokens.map((to) => ({ to, sound: 'default', body, data, priority: 'high' }));
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const messages = withToken.map((r) => ({
+    to: r.token!, sound: 'default', body, data, priority: 'high',
+  }));
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', Accept: 'application/json' };
   if (EXPO_ACCESS_TOKEN) headers['Authorization'] = `Bearer ${EXPO_ACCESS_TOKEN}`;
 
   const res = await fetch('https://exp.host/--/api/v2/push/send', {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(messages),
+    method: 'POST', headers, body: JSON.stringify(messages),
   });
-  if (!res.ok) console.error('Expo push failed:', await res.text());
+  const responseText = await res.text();
+  trace.push({ step: 'expo_push', type, status: res.status, ok: res.ok, count: withToken.length, response: responseText.slice(0, 300) });
+
+  const logRows = withToken.map((r) => ({
+    user_id: r.user_id,
+    callout_id: calloutId,
+    channel: 'push',
+    type,
+  }));
+  await supabase.schema('truvex').from('notification_log').insert(logRows);
 }
 
-async function sendTwilioSMS(to: string, body: string) {
-  const auth = btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`);
-  const res = await fetch(
-    `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`,
-    {
-      method: 'POST',
-      headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ To: to, From: TWILIO_PHONE_NUMBER, Body: body }).toString(),
-    }
-  );
-  if (!res.ok) console.error('Twilio SMS failed:', await res.text());
+function formatShiftDate(date: string): string {
+  return new Date(date + 'T00:00:00').toLocaleDateString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric',
+  });
 }
 
 function formatTime(time: string): string {

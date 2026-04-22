@@ -70,6 +70,10 @@ export function addNotificationResponseListener(
   return Notifications.addNotificationResponseReceivedListener(handler);
 }
 
+export function getLastNotificationResponse() {
+  return Notifications.getLastNotificationResponseAsync();
+}
+
 export function addNotificationReceivedListener(
   handler: (notification: Notifications.Notification) => void
 ) {

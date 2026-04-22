@@ -413,40 +413,57 @@ create table truvex.shift_presets (
 
 ### No-Response Escalation (15 minutes)
 - If `callouts.status = 'open'` and `first_accepted_at IS NULL` 15 minutes after creation
-- Notify manager: "No one has accepted yet"
-- Manager can tap "Open to all roles" → sets `callouts.open_to_all_roles = true`
-- Re-queries all location workers regardless of role and sends new notifications
+- Notify manager (see Notification Messages row 3) so they can reach out manually or post a new callout
+- **v1 has no in-app "open to all roles" action.** The `callouts.open_to_all_roles` column exists in the schema for backend readiness but no manager UI writes to it yet.
 
 ### Callout Cancellation
-- Manager taps Cancel on an active callout
+- **Assigned callouts cannot be cancelled.** Once a worker is assigned, the callout moves to history and is terminal.
+- Manager may cancel a callout while it is still `open` or `pending_selection`
 - Update `callouts.status = 'cancelled'`
-- If a worker had already accepted (`callout_responses` has an `accepted` row):
-  - Notify that worker: "The shift has been cancelled by the manager"
-  - Notify manager if the worker had an active accepted shift
-- Notify all other notified workers that the shift is cancelled
+- Notify all workers who had been notified (see Notification Messages row 6 — push only, not SMS)
+
+### Assigned-Shift Reminder (1 hour before start)
+- Scheduled job checks for callouts with `status = 'filled'` and `shift_date + start_time` ≈ 1 hour from now
+- Fires reminder (see Notification Messages row 9) **only if `shift_start - assigned_at > 3 hours`** — if assignment happened within the final 3 hours before the shift, the assignment notification is reminder enough and a second ping would be redundant
 
 ### Worker Fired / Removed
 - Manager deletes worker from team list
 - Delete `location_members` row for that user + location
 - Delete `worker_roles` rows for that user + location
 - Worker immediately loses access to location's callouts
-- If worker had an active `accepted` response on an open callout → notify manager
+- Notify the removed worker (see Notification Messages row 8 — push only)
+- If the removed worker had an active `accepted` response on an open/pending callout → notify manager (see Notification Messages row 7, SMS yes)
 - Worker's other location memberships are unaffected
 
 ---
 
 ## Notification Messages
 
-| Trigger | Recipient | Message |
-|---|---|---|
-| Callout posted | All matching workers | "New shift available: [Role] on [date] [time–time]. Open Truvex to accept." |
-| First acceptance (5 min later) | Manager | "[N] workers accepted the [Role] shift. Please select who will cover." |
-| No response (15 min) | Manager | "No one has accepted the [Role] shift yet." |
-| Manager selects worker | Selected worker | "You're confirmed for the [Role] shift on [date] at [start time]." |
-| Manager selects worker | Other acceptors | "This shift has been filled by someone else." |
-| Callout cancelled | Accepted worker | "The [Role] shift on [date] has been cancelled by the manager." |
-| Auto-assigned | Assigned worker | "You've been automatically assigned the [Role] shift on [date] at [start time]." |
-| Shift filled (any path) | All notified workers | "The [Role] shift on [date] has been filled." |
+**SMS policy:** Paid-tier push is always sent. SMS is a 2-minute fallback for workers whose push wasn't opened, but **only for the rows marked `SMS: yes`**. SMS is reserved for notifications that require action or where a missed message is costly (a worker failing to show up, or showing up when they shouldn't). Announcements (e.g. "shift was filled by someone else") are push-only to keep Twilio spend down.
+
+| # | Trigger | Recipient | Message | SMS |
+|---|---|---|---|---|
+| 1 | Callout posted | Eligible workers (matching role, not muted, active) | "New shift: [Role] on [date] [start]–[end]. Open Truvex to accept." | Yes |
+| 2 | First worker accepts (instant) | Manager | "[Worker] accepted the [Role] shift on [date] at [start]. Tap to confirm who covers." | Yes |
+| 3 | 15 min, no acceptors | Manager | "No one has accepted the [Role] shift on [date] at [start] yet. You may want to reach out or post again." | Yes |
+| 4a | Worker assigned by manager | Assigned worker | "You're confirmed for the [Role] shift on [date] at [start]." | Yes |
+| 4b | Worker assigned by 30-min auto-assign | Assigned worker | "You've been auto-assigned the [Role] shift on [date] at [start]." | Yes |
+| 5 | Worker assigned (manager or auto) | Other acceptors | "The [Role] shift on [date] at [start] was filled by someone else." | No |
+| 6 | Callout cancelled (pre-assignment only — assigned callouts cannot be cancelled) | Notified workers | "The [Role] shift on [date] at [start] has been cancelled." | No |
+| 7 | Manager removes a worker who held an accepted shift | Manager | "[Worker] was removed but had accepted the [Role] shift on [date] at [start]. Don't forget to post a new callout." | Yes |
+| 8 | Manager removes worker | The removed worker | "You've been removed from [Location]." | No |
+| 9 | 1 hour before shift starts | Assigned worker | "Reminder: your [Role] shift at [Location] starts in 1 hour." | Yes |
+
+**Notes and deliberate exclusions:**
+- Subsequent acceptances after the first do **not** ping the manager again — the manager's UI updates live via Supabase Realtime.
+- Auto-assignment (30-min timer) is the same dispatch flow as manager-pick; only the message copy differs (4b vs 4a). Other acceptors receive row 5 regardless of which path assigned the shift.
+- **No "open to all roles" escalation in v1.** The 15-min no-acceptors notification (row 3) just informs the manager — there is no in-app action that re-broadcasts the callout.
+- **Assigned callouts cannot be cancelled** (they move to history on assignment). Row 6 only fires for callouts cancelled while still `open` or `pending_selection`.
+- **No reassign / repost function in v1.** Row 7's message reminds the manager to post a fresh callout manually.
+- **1-hour reminder (row 9) fires only if the worker was assigned more than 3 hours before shift start.** If the assignment happened within 3 hours of the shift, the assignment notification itself (row 4a/4b) is the only reminder — a second ping would be redundant.
+- Worker declines → no notification (response is recorded silently).
+- Worker joins a location → no notification (they are active in-app).
+- Manager-initiated cancel of an unassigned callout → no manager confirmation push (they just tapped the button).
 
 ---
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { View, Animated, StyleSheet, Platform } from 'react-native';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
 import { useFonts, DMSans_700Bold, DMSans_800ExtraBold } from '@expo-google-fonts/dm-sans';
@@ -10,6 +10,7 @@ import {
   registerForPushNotifications,
   savePushToken,
   addNotificationResponseListener,
+  getLastNotificationResponse,
 } from '../lib/notifications';
 import LoadingScreen from '../components/LoadingScreen';
 
@@ -22,9 +23,14 @@ SystemUI.setBackgroundColorAsync('#0f0f1a').catch(() => {});
 function useAuthGuard() {
   const router = useRouter();
   const segments = useSegments();
+  const navState = useRootNavigationState();
   const { session, memberType, isLoading } = useStore();
 
   useEffect(() => {
+    // Wait for the root navigator to commit its first layout before navigating.
+    // Without this, router.replace can fire against an unmounted root and throw
+    // "Attempted to navigate before mounting the Root Layout component".
+    if (!navState?.key) return;
     if (isLoading) return;
 
     const inAuth = segments[0] === '(auth)';
@@ -54,16 +60,21 @@ function useAuthGuard() {
         router.replace('/no-location');
       }
     }
-  }, [session, memberType, isLoading, segments]);
+  }, [session, memberType, isLoading, segments, navState?.key]);
 }
 
 export default function RootLayout() {
   useFonts({ DMSans_700Bold, DMSans_800ExtraBold });
 
-  const { setSession, setProfile, setActiveLocation, setAllLocations, setMemberType, setIsLoading, reset, isLoading } =
-    useStore();
+  const {
+    setSession, setProfile, setActiveLocation, setAllLocations, setMemberType, setIsLoading, reset,
+    isLoading, memberType, allLocations,
+  } = useStore();
+  const router = useRouter();
+  const navState = useRootNavigationState();
   const bootstrapping = useRef(false);
   const hasBootstrapped = useRef(false);
+  const pendingCalloutId = useRef<string | null>(null);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
@@ -119,14 +130,45 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
+    // Warm tap — app already running
     const sub = addNotificationResponseListener((response) => {
-      const calloutId = response.notification.request.content.data?.callout_id;
-      if (calloutId) {
-        // Navigation is handled by the router once screens are mounted
-      }
+      const cid = response.notification.request.content.data?.callout_id;
+      if (cid) pendingCalloutId.current = String(cid);
+    });
+    // Cold start — app launched by tapping a notification
+    getLastNotificationResponse().then((resp) => {
+      const cid = resp?.notification.request.content.data?.callout_id;
+      if (cid && !pendingCalloutId.current) pendingCalloutId.current = String(cid);
     });
     return () => sub.remove();
   }, []);
+
+  // Consume pending callout tap once navigator + bootstrap are ready.
+  // Switches activeLocation to the callout's location so multi-location managers
+  // land on the correct callout detail instead of whichever location was last active.
+  useEffect(() => {
+    if (!navState?.key || isLoading || !memberType) return;
+    const calloutId = pendingCalloutId.current;
+    if (!calloutId) return;
+    pendingCalloutId.current = null;
+
+    (async () => {
+      const { data: callout } = await supabase
+        .schema('truvex').from('callouts')
+        .select('id, location_id')
+        .eq('id', calloutId)
+        .maybeSingle();
+      if (!callout) return;
+
+      if (memberType === 'manager') {
+        const loc = allLocations.find((l) => l.id === callout.location_id);
+        if (loc) setActiveLocation(loc);
+        router.push(`/(manager)/callout/${calloutId}`);
+      } else if (memberType === 'worker') {
+        router.push('/(worker)/');
+      }
+    })();
+  }, [navState?.key, isLoading, memberType, allLocations, router, setActiveLocation]);
 
   async function bootstrapUser(userId: string) {
     if (bootstrapping.current) return;

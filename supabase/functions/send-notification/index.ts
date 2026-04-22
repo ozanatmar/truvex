@@ -3,223 +3,404 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const TWILIO_ACCOUNT_SID = Deno.env.get('TWILIO_ACCOUNT_SID')!;
-const TWILIO_AUTH_TOKEN = Deno.env.get('TWILIO_AUTH_TOKEN')!;
-const TWILIO_PHONE_NUMBER = Deno.env.get('TWILIO_PHONE_NUMBER')!;
 const EXPO_ACCESS_TOKEN = Deno.env.get('EXPO_ACCESS_TOKEN');
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-interface CalloutRecord {
-  id: string;
-  location_id: string;
-  role_id: string;
-  shift_date: string;
-  start_time: string;
-  end_time: string;
-  notes: string | null;
-  status: string;
-  open_to_all_roles: boolean;
-}
+type WebhookPayload = {
+  type: 'INSERT' | 'UPDATE' | 'DELETE';
+  table: string;
+  schema: string;
+  record: Record<string, any> | null;
+  old_record: Record<string, any> | null;
+};
 
 serve(async (req) => {
+  const trace: any[] = [];
   try {
-    const payload = await req.json();
-    const record: CalloutRecord = payload.record;
+    const payload = (await req.json()) as WebhookPayload;
+    trace.push({ step: 'received', table: payload.table, event: payload.type });
 
-    // Only process new callouts with status 'open'
-    if (payload.type !== 'INSERT' || record.status !== 'open') {
-      return new Response('skipped', { status: 200 });
-    }
-
-    await processCalloutNotification(record);
-
-    return new Response('ok', { status: 200 });
+    const result = await dispatch(payload, trace);
+    return json({ ok: true, trace, result }, 200);
   } catch (err) {
     console.error('send-notification error:', err);
-    return new Response(String(err), { status: 500 });
+    return json({ ok: false, error: String(err), trace }, 500);
   }
 });
 
-async function processCalloutNotification(callout: CalloutRecord) {
-  // Get location to check subscription tier
-  const { data: location } = await supabase
-    .from('truvex.locations')
-    .select('subscription_tier, subscription_status, trial_ends_at, name')
-    .eq('id', callout.location_id)
-    .single();
+async function dispatch(payload: WebhookPayload, trace: any[]) {
+  const { table, type, record, old_record } = payload;
 
-  if (!location) return;
-
-  // Pro features gate: paid pro/business OR active trial. Free-without-trial skips.
-  const isPaid = location.subscription_tier === 'pro' || location.subscription_tier === 'business';
-  const trialActive = location.subscription_status === 'trialing'
-    && location.trial_ends_at
-    && new Date(location.trial_ends_at).getTime() > Date.now();
-
-  if (!isPaid && !trialActive) {
-    console.log(`Location ${callout.location_id} has no Pro features — skipping notifications`);
-    return;
+  if (table === 'callouts' && type === 'INSERT' && record?.status === 'open') {
+    return handleCalloutPosted(record, trace);
   }
 
-  // Get role name
-  const { data: role } = await supabase
-    .from('truvex.roles')
-    .select('name')
-    .eq('id', callout.role_id)
-    .single();
+  if (table === 'callouts' && type === 'UPDATE' && record && old_record) {
+    if (!old_record.assigned_worker_id && record.assigned_worker_id) {
+      return handleWorkerAssigned(record, trace);
+    }
+    if (old_record.status !== 'cancelled' && record.status === 'cancelled') {
+      return handleCalloutCancelled(record, trace);
+    }
+    trace.push({ step: 'callouts_update_no_match' });
+    return { skipped: 'no_matching_callout_update' };
+  }
 
-  if (!role) return;
+  if (table === 'callout_responses' && type === 'INSERT' && record?.response === 'accepted') {
+    return handleResponseAccepted(record, trace);
+  }
 
-  // Find eligible workers: matching role (or open_to_all_roles), not muted, active
-  let membersQuery = supabase
-    .from('truvex.location_members')
-    .select('user_id, is_muted, user:truvex.profiles(id, phone, expo_push_token)')
+  if (table === 'location_members' && type === 'DELETE' && old_record) {
+    return handleWorkerRemoved(old_record, trace);
+  }
+
+  trace.push({ step: 'unhandled' });
+  return { skipped: 'unhandled_event' };
+}
+
+// =====================================================================
+// Row 1: Callout posted → eligible workers
+// =====================================================================
+async function handleCalloutPosted(callout: any, trace: any[]) {
+  trace.push({ step: 'row1_start', callout_id: callout.id });
+
+  const location = await fetchLocation(callout.location_id);
+  if (!location) { trace.push({ step: 'location_missing' }); return { stopped: 'location' }; }
+  if (!isPaidOrTrialing(location)) { trace.push({ step: 'no_pro_features' }); return { stopped: 'no_pro' }; }
+
+  const role = await fetchRole(callout.role_id);
+  if (!role) { trace.push({ step: 'role_missing' }); return { stopped: 'role' }; }
+
+  const { data: members } = await supabase
+    .schema('truvex').from('location_members')
+    .select('user_id, is_muted, user:profiles!location_members_user_id_fkey(id, phone, expo_push_token)')
     .eq('location_id', callout.location_id)
     .eq('member_type', 'worker')
     .eq('status', 'active')
     .eq('is_muted', false);
 
-  const { data: members } = await membersQuery;
-  if (!members || members.length === 0) return;
+  if (!members || members.length === 0) { trace.push({ step: 'no_members' }); return { stopped: 'no_members' }; }
 
-  let eligibleUserIds: string[];
-
+  let eligibleIds: string[];
   if (callout.open_to_all_roles) {
-    eligibleUserIds = members.map((m: any) => m.user_id);
+    eligibleIds = members.map((m: any) => m.user_id);
   } else {
-    // Filter to workers who have the matching role
-    const { data: workerRoles } = await supabase
-      .from('truvex.worker_roles')
+    const { data: wr } = await supabase
+      .schema('truvex').from('worker_roles')
       .select('user_id')
       .eq('location_id', callout.location_id)
       .eq('role_id', callout.role_id);
-
-    const roleUserIds = new Set((workerRoles ?? []).map((wr: any) => wr.user_id));
-    eligibleUserIds = members
-      .filter((m: any) => roleUserIds.has(m.user_id))
-      .map((m: any) => m.user_id);
+    const ids = new Set((wr ?? []).map((r: any) => r.user_id));
+    eligibleIds = members.filter((m: any) => ids.has(m.user_id)).map((m: any) => m.user_id);
   }
 
-  if (eligibleUserIds.length === 0) return;
+  const eligible = members.filter((m: any) => eligibleIds.includes(m.user_id));
+  trace.push({ step: 'row1_eligible', count: eligible.length });
+  if (eligible.length === 0) return { stopped: 'no_eligible' };
 
-  const eligibleMembers = members.filter((m: any) => eligibleUserIds.includes(m.user_id));
+  const message = `New shift: ${role.name} on ${formatShiftDate(callout.shift_date)} ${formatTime(callout.start_time)}–${formatTime(callout.end_time)}. Open Truvex to accept.`;
 
-  // Format shift for message
-  const shiftDate = new Date(callout.shift_date + 'T00:00:00').toLocaleDateString('en-US', {
-    weekday: 'short', month: 'short', day: 'numeric',
-  });
-  const startTime = formatTime(callout.start_time);
-  const endTime = formatTime(callout.end_time);
-  const message = `New shift available: ${role.name} on ${shiftDate} ${startTime}–${endTime}. Open Truvex to accept.`;
-
-  // Send push notifications
-  const pushTargets = eligibleMembers.filter((m: any) => m.user?.expo_push_token);
-  const smsTargets = eligibleMembers;
-
-  if (pushTargets.length > 0) {
-    await sendExpoPush(
-      pushTargets.map((m: any) => m.user.expo_push_token!),
-      message,
-      { callout_id: callout.id }
-    );
-
-    // Log push notifications
-    const logRows = pushTargets.map((m: any) => ({
-      user_id: m.user_id,
-      callout_id: callout.id,
-      channel: 'push',
-      type: 'callout_posted',
-    }));
-    await supabase.from('truvex.notification_log').insert(logRows);
-  }
-
-  // Schedule SMS fallback after 2 minutes
-  // In production this would use a delayed queue (pg_cron or Supabase scheduled function)
-  // Here we use a setTimeout-equivalent approach with a separate invocation
-  // For now, we store pending SMS in notification_log and auto-assign function handles it
-  const smsLogRows = smsTargets.map((m: any) => ({
-    user_id: m.user_id,
-    callout_id: callout.id,
-    channel: 'sms',
-    type: 'callout_posted',
-  }));
-  // Mark as pending by not setting sent_at yet — auto-assign will check
-  // Actually for 2-min fallback, we'll invoke a delayed edge function
-  // Store intent by inserting with a future sent_at
-  const twoMinFromNow = new Date(Date.now() + 2 * 60 * 1000).toISOString();
-
-  for (const member of smsTargets) {
-    // Only queue SMS for workers who have a push token (fallback for unopened push)
-    // Workers without push tokens get SMS immediately
-    const hasPush = (member as any).user?.expo_push_token;
-    if (!hasPush) {
-      await sendTwilioSMS((member as any).user.phone, message);
-      await supabase.from('truvex.notification_log').insert({
-        user_id: member.user_id,
-        callout_id: callout.id,
-        channel: 'sms',
-        type: 'callout_posted',
-      });
-    }
-    // For push recipients, SMS will be sent by auto-assign function after 2 min
-  }
+  await pushAndLog(
+    eligible.map((m: any) => ({ user_id: m.user_id, token: m.user?.expo_push_token })),
+    message,
+    { callout_id: callout.id, type: 'callout_posted' },
+    callout.id,
+    'callout_posted',
+    trace,
+  );
+  return { done: true };
 }
 
-async function sendExpoPush(
-  tokens: string[],
+// =====================================================================
+// Row 2: First worker accepts → manager
+// =====================================================================
+async function handleResponseAccepted(response: any, trace: any[]) {
+  trace.push({ step: 'row2_start', callout_id: response.callout_id, worker_id: response.worker_id });
+
+  // Confirm this is the first accepted response
+  const { count } = await supabase
+    .schema('truvex').from('callout_responses')
+    .select('id', { count: 'exact', head: true })
+    .eq('callout_id', response.callout_id)
+    .eq('response', 'accepted');
+
+  if ((count ?? 0) !== 1) {
+    trace.push({ step: 'not_first_acceptance', count });
+    return { skipped: 'not_first' };
+  }
+
+  const callout = await fetchCallout(response.callout_id);
+  if (!callout) return { stopped: 'callout_missing' };
+
+  const location = await fetchLocation(callout.location_id);
+  if (!location || !isPaidOrTrialing(location)) return { stopped: 'no_pro' };
+
+  const role = await fetchRole(callout.role_id);
+  const worker = await fetchProfile(response.worker_id);
+  const manager = await fetchProfile(callout.manager_id);
+  if (!manager) return { stopped: 'manager_missing' };
+
+  const workerName = worker?.name || 'A worker';
+  const managerLocations = await countManagerLocations(callout.manager_id);
+  const locPart = managerLocations > 1 ? ` at ${location.name}` : '';
+  const message = `${workerName} accepted the ${role?.name ?? ''} shift${locPart} on ${formatShiftDate(callout.shift_date)} at ${formatTime(callout.start_time)}. Tap to confirm who covers.`;
+
+  await pushAndLog(
+    [{ user_id: manager.id, token: manager.expo_push_token }],
+    message,
+    { callout_id: callout.id, type: 'first_acceptance' },
+    callout.id,
+    'first_acceptance',
+    trace,
+  );
+  return { done: true };
+}
+
+// =====================================================================
+// Rows 4 + 5: Worker assigned → assigned worker + other acceptors
+// =====================================================================
+async function handleWorkerAssigned(callout: any, trace: any[]) {
+  trace.push({ step: 'row4_start', callout_id: callout.id, assigned_worker_id: callout.assigned_worker_id, assigned_by: callout.assigned_by });
+
+  const location = await fetchLocation(callout.location_id);
+  if (!location || !isPaidOrTrialing(location)) return { stopped: 'no_pro' };
+
+  const role = await fetchRole(callout.role_id);
+  const shiftDateStr = formatShiftDate(callout.shift_date);
+  const startStr = formatTime(callout.start_time);
+
+  // Row 4a/4b — assigned worker
+  const assigned = await fetchProfile(callout.assigned_worker_id);
+  if (assigned) {
+    const assignedMsg = callout.assigned_by === 'auto'
+      ? `You've been auto-assigned the ${role?.name ?? ''} shift on ${shiftDateStr} at ${startStr}.`
+      : `You're confirmed for the ${role?.name ?? ''} shift on ${shiftDateStr} at ${startStr}.`;
+
+    await pushAndLog(
+      [{ user_id: assigned.id, token: assigned.expo_push_token }],
+      assignedMsg,
+      { callout_id: callout.id, type: 'assigned' },
+      callout.id,
+      callout.assigned_by === 'auto' ? 'selected_auto' : 'selected',
+      trace,
+    );
+  }
+
+  // Row 5 — other acceptors
+  const { data: others } = await supabase
+    .schema('truvex').from('callout_responses')
+    .select('worker_id, worker:profiles!callout_responses_worker_id_fkey(id, expo_push_token)')
+    .eq('callout_id', callout.id)
+    .eq('response', 'accepted')
+    .neq('worker_id', callout.assigned_worker_id);
+
+  if (others && others.length > 0) {
+    const otherMsg = `The ${role?.name ?? ''} shift on ${shiftDateStr} at ${startStr} was filled by someone else.`;
+    await pushAndLog(
+      others.map((r: any) => ({ user_id: r.worker_id, token: r.worker?.expo_push_token })),
+      otherMsg,
+      { callout_id: callout.id, type: 'not_selected' },
+      callout.id,
+      'not_selected',
+      trace,
+    );
+  }
+
+  return { done: true };
+}
+
+// =====================================================================
+// Row 6: Callout cancelled → notified workers
+// =====================================================================
+async function handleCalloutCancelled(callout: any, trace: any[]) {
+  trace.push({ step: 'row6_start', callout_id: callout.id });
+
+  const location = await fetchLocation(callout.location_id);
+  if (!location || !isPaidOrTrialing(location)) return { stopped: 'no_pro' };
+  const role = await fetchRole(callout.role_id);
+
+  const { data: notified } = await supabase
+    .schema('truvex').from('notification_log')
+    .select('user_id, user:profiles!notification_log_user_id_fkey(id, expo_push_token)')
+    .eq('callout_id', callout.id)
+    .eq('type', 'callout_posted')
+    .eq('channel', 'push');
+
+  if (!notified || notified.length === 0) { trace.push({ step: 'no_notified' }); return { stopped: 'no_notified' }; }
+
+  // Deduplicate by user_id
+  const seen = new Set<string>();
+  const unique = notified.filter((n: any) => (seen.has(n.user_id) ? false : seen.add(n.user_id)));
+
+  const msg = `The ${role?.name ?? ''} shift on ${formatShiftDate(callout.shift_date)} at ${formatTime(callout.start_time)} has been cancelled.`;
+  await pushAndLog(
+    unique.map((n: any) => ({ user_id: n.user_id, token: n.user?.expo_push_token })),
+    msg,
+    { callout_id: callout.id, type: 'shift_cancelled' },
+    callout.id,
+    'shift_cancelled',
+    trace,
+  );
+  return { done: true };
+}
+
+// =====================================================================
+// Rows 7 + 8: Worker removed from location
+// =====================================================================
+async function handleWorkerRemoved(member: any, trace: any[]) {
+  if (member.member_type !== 'worker' || !member.user_id) {
+    trace.push({ step: 'not_active_worker' });
+    return { skipped: 'not_worker' };
+  }
+  trace.push({ step: 'row7_8_start', location_id: member.location_id, user_id: member.user_id });
+
+  const location = await fetchLocation(member.location_id);
+  if (!location) return { stopped: 'location_missing' };
+  if (!isPaidOrTrialing(location)) { trace.push({ step: 'no_pro' }); return { stopped: 'no_pro' }; }
+
+  // Row 8 — removed worker
+  const worker = await fetchProfile(member.user_id);
+  if (worker) {
+    const msg = `You've been removed from ${location.name}.`;
+    await pushAndLog(
+      [{ user_id: worker.id, token: worker.expo_push_token }],
+      msg,
+      { location_id: member.location_id, type: 'worker_removed_self' },
+      null,
+      'worker_removed_self',
+      trace,
+    );
+  }
+
+  // Row 7 — manager (only if removed worker held an accepted response on an active callout)
+  const { data: pendingAccepts } = await supabase
+    .schema('truvex').from('callout_responses')
+    .select('callout_id, callout:callouts!callout_responses_callout_id_fkey(id, status, role_id, shift_date, start_time, manager_id, location_id)')
+    .eq('worker_id', member.user_id)
+    .eq('response', 'accepted');
+
+  if (pendingAccepts) {
+    for (const row of pendingAccepts) {
+      const c = (row as any).callout;
+      if (!c || c.location_id !== member.location_id) continue;
+      if (!['open', 'pending_selection'].includes(c.status)) continue;
+
+      const role = await fetchRole(c.role_id);
+      const manager = await fetchProfile(c.manager_id);
+      const workerName = worker?.name || 'A worker';
+      const msg = `${workerName} was removed but had accepted the ${role?.name ?? ''} shift on ${formatShiftDate(c.shift_date)} at ${formatTime(c.start_time)}. Don't forget to post a new callout.`;
+
+      if (manager) {
+        await pushAndLog(
+          [{ user_id: manager.id, token: manager.expo_push_token }],
+          msg,
+          { callout_id: c.id, type: 'worker_removed_manager' },
+          c.id,
+          'worker_removed_manager',
+          trace,
+        );
+      }
+    }
+  }
+  return { done: true };
+}
+
+// =====================================================================
+// Helpers
+// =====================================================================
+async function fetchLocation(id: string) {
+  const { data } = await supabase
+    .schema('truvex').from('locations')
+    .select('id, name, subscription_tier, subscription_status, trial_ends_at')
+    .eq('id', id).single();
+  return data;
+}
+
+async function fetchRole(id: string) {
+  const { data } = await supabase
+    .schema('truvex').from('roles').select('id, name').eq('id', id).single();
+  return data;
+}
+
+async function fetchCallout(id: string) {
+  const { data } = await supabase
+    .schema('truvex').from('callouts').select('*').eq('id', id).single();
+  return data;
+}
+
+async function fetchProfile(id: string) {
+  const { data } = await supabase
+    .schema('truvex').from('profiles')
+    .select('id, phone, name, expo_push_token')
+    .eq('id', id).single();
+  return data;
+}
+
+async function countManagerLocations(managerId: string): Promise<number> {
+  const { count } = await supabase
+    .schema('truvex').from('locations')
+    .select('id', { count: 'exact', head: true })
+    .eq('manager_id', managerId);
+  return count ?? 0;
+}
+
+function isPaidOrTrialing(location: any): boolean {
+  const isPaid = location.subscription_tier === 'pro' || location.subscription_tier === 'business';
+  const trialActive =
+    location.subscription_status === 'trialing' &&
+    location.trial_ends_at &&
+    new Date(location.trial_ends_at).getTime() > Date.now();
+  return isPaid || trialActive;
+}
+
+async function pushAndLog(
+  recipients: { user_id: string; token: string | null | undefined }[],
   body: string,
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
+  calloutId: string | null,
+  type: string,
+  trace: any[],
 ) {
-  const messages = tokens.map((to) => ({
-    to,
+  const withToken = recipients.filter((r) => !!r.token);
+  if (withToken.length === 0) {
+    trace.push({ step: 'push_skipped_no_tokens', type, targets: recipients.length });
+    return;
+  }
+
+  const messages = withToken.map((r) => ({
+    to: r.token!,
     sound: 'default',
     body,
     data,
     priority: 'high',
   }));
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    Accept: 'application/json',
-  };
-  if (EXPO_ACCESS_TOKEN) {
-    headers['Authorization'] = `Bearer ${EXPO_ACCESS_TOKEN}`;
-  }
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', Accept: 'application/json' };
+  if (EXPO_ACCESS_TOKEN) headers['Authorization'] = `Bearer ${EXPO_ACCESS_TOKEN}`;
 
   const res = await fetch('https://exp.host/--/api/v2/push/send', {
     method: 'POST',
     headers,
     body: JSON.stringify(messages),
   });
+  const responseText = await res.text();
+  trace.push({ step: 'expo_push', type, status: res.status, ok: res.ok, count: withToken.length, response: responseText.slice(0, 500) });
 
-  if (!res.ok) {
-    console.error('Expo push failed:', await res.text());
-  }
+  const logRows = withToken.map((r) => ({
+    user_id: r.user_id,
+    callout_id: calloutId,
+    channel: 'push',
+    type,
+  }));
+  const { error: logError } = await supabase.schema('truvex').from('notification_log').insert(logRows);
+  if (logError) trace.push({ step: 'log_insert_failed', type, error: logError });
 }
 
-async function sendTwilioSMS(to: string, body: string) {
-  const auth = btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`);
-
-  const res = await fetch(
-    `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${auth}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        To: to,
-        From: TWILIO_PHONE_NUMBER,
-        Body: body,
-      }).toString(),
-    }
-  );
-
-  if (!res.ok) {
-    console.error('Twilio SMS failed:', await res.text());
-  }
+function formatShiftDate(date: string): string {
+  return new Date(date + 'T00:00:00').toLocaleDateString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric',
+  });
 }
 
 function formatTime(time: string): string {
@@ -228,4 +409,11 @@ function formatTime(time: string): string {
   const period = hour >= 12 ? 'PM' : 'AM';
   const h12 = hour % 12 || 12;
   return `${h12}:${minuteStr} ${period}`;
+}
+
+function json(body: unknown, status: number) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
 }

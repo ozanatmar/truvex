@@ -33,3 +33,6 @@ enabled = true
 account_sid = "env(TWILIO_ACCOUNT_SID)"
 message_service_sid = "env(TWILIO_MESSAGE_SERVICE_SID)"
 auth_token = "env(TWILIO_AUTH_TOKEN)"
+
+[functions.send-notification]
+verify_jwt = false

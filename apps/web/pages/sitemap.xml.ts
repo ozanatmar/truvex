@@ -46,6 +46,14 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
   const DAY_MS = 24 * 60 * 60 * 1000;
   const entries: SitemapEntry[] = [];
 
+  // Pre-launch: the waitlist homepage and its About clone are indexable so
+  // the domain can build authority before launch. Canonical on /pre-launch
+  // points back at `/`, so Google indexes the redirect target as `/`.
+  if (!isLaunched) {
+    entries.push({ loc: `${SITE_URL}/`, lastmod: today, changefreq: 'weekly', priority: '1.0' });
+    entries.push({ loc: `${SITE_URL}/about-pre-launch`, lastmod: today, changefreq: 'monthly', priority: '0.7' });
+  }
+
   // Blog index + posts are always indexable (allowlisted through the launch gate)
   entries.push({ loc: `${SITE_URL}/blog`, lastmod: today, changefreq: 'weekly', priority: '0.8' });
   for (const p of posts ?? []) {

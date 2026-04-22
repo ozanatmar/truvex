@@ -8,8 +8,6 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
   const body = [
     'User-agent: *',
     'Allow: /',
-    'Disallow: /pre-launch',
-    'Disallow: /about-pre-launch',
     'Disallow: /coming-soon',
     'Disallow: /upgrade',
     'Disallow: /success',

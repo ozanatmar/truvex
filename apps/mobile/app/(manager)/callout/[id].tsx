@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
   statusValue: { fontSize: 13, color: '#aaa', fontWeight: '600', flexShrink: 0, minWidth: 130 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, gap: 12 },
   sectionTitle: { fontSize: 15, fontWeight: '700', color: '#aaa', flexShrink: 1 },
-  refreshedAt: { fontSize: 12, color: '#555', minWidth: 100, textAlign: 'right' },
+  refreshedAt: { fontSize: 12, color: '#555', minWidth: 130, textAlign: 'right', flexShrink: 0 },
   workerCard: {
     backgroundColor: '#1a1a2e',
     borderRadius: 12,

@@ -15,3 +15,5 @@ supabase/.temp/
 next-env.d.ts
 *.tsbuildinfo
 secrets/
+google-services.json
+GoogleService-Info.plist

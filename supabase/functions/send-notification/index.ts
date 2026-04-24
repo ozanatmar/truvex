@@ -4,8 +4,24 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const EXPO_ACCESS_TOKEN = Deno.env.get('EXPO_ACCESS_TOKEN');
+const TWILIO_ACCOUNT_SID = Deno.env.get('TWILIO_ACCOUNT_SID');
+const TWILIO_AUTH_TOKEN = Deno.env.get('TWILIO_AUTH_TOKEN');
+const TWILIO_PHONE_NUMBER = Deno.env.get('TWILIO_PHONE_NUMBER');
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+// Types eligible for SMS per CLAUDE.md notification table
+const SMS_ELIGIBLE_TYPES = new Set([
+  'callout_posted',
+  'first_acceptance',
+  'no_response_escalation',
+  'selected',
+  'selected_auto',
+  'worker_removed_manager',
+  'shift_reminder',
+]);
+
+type Recipient = { user_id: string; token: string | null | undefined; phone?: string | null };
 
 type WebhookPayload = {
   type: 'INSERT' | 'UPDATE' | 'DELETE';
@@ -108,7 +124,7 @@ async function handleCalloutPosted(callout: any, trace: any[]) {
   const message = `New shift: ${role.name} on ${formatShiftDate(callout.shift_date)} ${formatTime(callout.start_time)}–${formatTime(callout.end_time)}. Open Truvex to accept.`;
 
   await pushAndLog(
-    eligible.map((m: any) => ({ user_id: m.user_id, token: m.user?.expo_push_token })),
+    eligible.map((m: any) => ({ user_id: m.user_id, token: m.user?.expo_push_token, phone: m.user?.phone })),
     message,
     { callout_id: callout.id, type: 'callout_posted' },
     callout.id,
@@ -153,7 +169,7 @@ async function handleResponseAccepted(response: any, trace: any[]) {
   const message = `${workerName} accepted the ${role?.name ?? ''} shift${locPart} on ${formatShiftDate(callout.shift_date)} at ${formatTime(callout.start_time)}. Tap to confirm who covers.`;
 
   await pushAndLog(
-    [{ user_id: manager.id, token: manager.expo_push_token }],
+    [{ user_id: manager.id, token: manager.expo_push_token, phone: manager.phone }],
     message,
     { callout_id: callout.id, type: 'first_acceptance' },
     callout.id,
@@ -184,7 +200,7 @@ async function handleWorkerAssigned(callout: any, trace: any[]) {
       : `You're confirmed for the ${role?.name ?? ''} shift on ${shiftDateStr} at ${startStr}.`;
 
     await pushAndLog(
-      [{ user_id: assigned.id, token: assigned.expo_push_token }],
+      [{ user_id: assigned.id, token: assigned.expo_push_token, phone: assigned.phone }],
       assignedMsg,
       { callout_id: callout.id, type: 'assigned' },
       callout.id,
@@ -193,10 +209,10 @@ async function handleWorkerAssigned(callout: any, trace: any[]) {
     );
   }
 
-  // Row 5 — other acceptors
+  // Row 5 — other acceptors (push only, no SMS)
   const { data: others } = await supabase
     .schema('truvex').from('callout_responses')
-    .select('worker_id, worker:profiles!callout_responses_worker_id_fkey(id, expo_push_token)')
+    .select('worker_id, worker:profiles!callout_responses_worker_id_fkey(id, phone, expo_push_token)')
     .eq('callout_id', callout.id)
     .eq('response', 'accepted')
     .neq('worker_id', callout.assigned_worker_id);
@@ -204,7 +220,7 @@ async function handleWorkerAssigned(callout: any, trace: any[]) {
   if (others && others.length > 0) {
     const otherMsg = `The ${role?.name ?? ''} shift on ${shiftDateStr} at ${startStr} was filled by someone else.`;
     await pushAndLog(
-      others.map((r: any) => ({ user_id: r.worker_id, token: r.worker?.expo_push_token })),
+      others.map((r: any) => ({ user_id: r.worker_id, token: r.worker?.expo_push_token, phone: r.worker?.phone })),
       otherMsg,
       { callout_id: callout.id, type: 'not_selected' },
       callout.id,
@@ -217,7 +233,7 @@ async function handleWorkerAssigned(callout: any, trace: any[]) {
 }
 
 // =====================================================================
-// Row 6: Callout cancelled → notified workers
+// Row 6: Callout cancelled → notified workers (push only, no SMS)
 // =====================================================================
 async function handleCalloutCancelled(callout: any, trace: any[]) {
   trace.push({ step: 'row6_start', callout_id: callout.id });
@@ -228,7 +244,7 @@ async function handleCalloutCancelled(callout: any, trace: any[]) {
 
   const { data: notified } = await supabase
     .schema('truvex').from('notification_log')
-    .select('user_id, user:profiles!notification_log_user_id_fkey(id, expo_push_token)')
+    .select('user_id, user:profiles!notification_log_user_id_fkey(id, phone, expo_push_token)')
     .eq('callout_id', callout.id)
     .eq('type', 'callout_posted')
     .eq('channel', 'push');
@@ -241,7 +257,7 @@ async function handleCalloutCancelled(callout: any, trace: any[]) {
 
   const msg = `The ${role?.name ?? ''} shift on ${formatShiftDate(callout.shift_date)} at ${formatTime(callout.start_time)} has been cancelled.`;
   await pushAndLog(
-    unique.map((n: any) => ({ user_id: n.user_id, token: n.user?.expo_push_token })),
+    unique.map((n: any) => ({ user_id: n.user_id, token: n.user?.expo_push_token, phone: n.user?.phone })),
     msg,
     { callout_id: callout.id, type: 'shift_cancelled' },
     callout.id,
@@ -265,12 +281,12 @@ async function handleWorkerRemoved(member: any, trace: any[]) {
   if (!location) return { stopped: 'location_missing' };
   if (!isPaidOrTrialing(location)) { trace.push({ step: 'no_pro' }); return { stopped: 'no_pro' }; }
 
-  // Row 8 — removed worker
+  // Row 8 — removed worker (push only, no SMS)
   const worker = await fetchProfile(member.user_id);
   if (worker) {
     const msg = `You've been removed from ${location.name}.`;
     await pushAndLog(
-      [{ user_id: worker.id, token: worker.expo_push_token }],
+      [{ user_id: worker.id, token: worker.expo_push_token, phone: worker.phone }],
       msg,
       { location_id: member.location_id, type: 'worker_removed_self' },
       null,
@@ -279,7 +295,7 @@ async function handleWorkerRemoved(member: any, trace: any[]) {
     );
   }
 
-  // Row 7 — manager (only if removed worker held an accepted response on an active callout)
+  // Row 7 — manager (SMS eligible — only if removed worker held an accepted response on an active callout)
   const { data: pendingAccepts } = await supabase
     .schema('truvex').from('callout_responses')
     .select('callout_id, callout:callouts!callout_responses_callout_id_fkey(id, status, role_id, shift_date, start_time, manager_id, location_id)')
@@ -299,7 +315,7 @@ async function handleWorkerRemoved(member: any, trace: any[]) {
 
       if (manager) {
         await pushAndLog(
-          [{ user_id: manager.id, token: manager.expo_push_token }],
+          [{ user_id: manager.id, token: manager.expo_push_token, phone: manager.phone }],
           msg,
           { callout_id: c.id, type: 'worker_removed_manager' },
           c.id,
@@ -360,8 +376,14 @@ function isPaidOrTrialing(location: any): boolean {
   return isPaid || trialActive;
 }
 
+// Sends Expo push to token holders and logs each send with the message body.
+// For SMS-eligible types, also sends Twilio SMS immediately to recipients with
+// no push token — this covers dev/test environments where push isn't available
+// and production users who never registered for push.
+// The 2-minute fallback SMS for token holders who don't open their push
+// is handled separately by handleSmsFallback in the auto-assign cron job.
 async function pushAndLog(
-  recipients: { user_id: string; token: string | null | undefined }[],
+  recipients: Recipient[],
   body: string,
   data: Record<string, unknown>,
   calloutId: string | null,
@@ -369,49 +391,97 @@ async function pushAndLog(
   trace: any[],
 ) {
   const withToken = recipients.filter((r) => !!r.token);
-  if (withToken.length === 0) {
+  const noToken = recipients.filter((r) => !r.token);
+
+  if (withToken.length > 0) {
+    for (const r of withToken) {
+      console.log(`[push] recipient type=${type} user=${r.user_id} token=…${r.token!.slice(-10)}`);
+    }
+
+    const messages = withToken.map((r) => ({
+      to: r.token!,
+      sound: 'default',
+      body,
+      data,
+      priority: 'high',
+    }));
+
+    const headers: Record<string, string> = { 'Content-Type': 'application/json', Accept: 'application/json' };
+    if (EXPO_ACCESS_TOKEN) headers['Authorization'] = `Bearer ${EXPO_ACCESS_TOKEN}`;
+
+    const res = await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(messages),
+    });
+    const responseText = await res.text();
+    trace.push({ step: 'expo_push', type, status: res.status, ok: res.ok, count: withToken.length, response: responseText.slice(0, 500) });
+    console.log(`[push] sent type=${type} count=${withToken.length} status=${res.status} expoResp=${responseText.slice(0, 300)}`);
+
+    const logRows = withToken.map((r) => ({
+      user_id: r.user_id,
+      callout_id: calloutId,
+      channel: 'push',
+      type,
+      body,
+    }));
+    const { error: logError } = await supabase.schema('truvex').from('notification_log').insert(logRows);
+    if (logError) {
+      trace.push({ step: 'log_insert_failed', type, error: logError });
+      console.error(`[push] log insert failed type=${type}`, logError);
+    }
+  } else {
     trace.push({ step: 'push_skipped_no_tokens', type, targets: recipients.length });
     console.log(`[push] skipped type=${type} targets=${recipients.length} noTokens`);
+  }
+
+  // Immediate SMS for recipients with no push token on SMS-eligible types
+  if (SMS_ELIGIBLE_TYPES.has(type)) {
+    const withPhone = noToken.filter((r) => !!r.phone);
+    for (const r of withPhone) {
+      try {
+        await sendSms(r.phone!, body);
+        await supabase.schema('truvex').from('notification_log').insert({
+          user_id: r.user_id,
+          callout_id: calloutId,
+          channel: 'sms',
+          type,
+          body,
+        });
+        trace.push({ step: 'sms_immediate', type, user_id: r.user_id });
+        console.log(`[sms] immediate type=${type} user=${r.user_id}`);
+      } catch (err) {
+        trace.push({ step: 'sms_immediate_failed', type, user_id: r.user_id, error: String(err) });
+        console.error(`[sms] immediate failed type=${type} user=${r.user_id}:`, err);
+      }
+    }
+    if (withPhone.length === 0 && noToken.length > 0) {
+      trace.push({ step: 'sms_skipped_no_phone', type, noTokenCount: noToken.length });
+    }
+  }
+}
+
+async function sendSms(to: string, body: string): Promise<void> {
+  if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
+    console.warn('[sms] Twilio env vars not set — skipping');
     return;
   }
-
-  // Log each recipient so we can tell "sent once to two tokens" apart from "sent twice to one token"
-  for (const r of withToken) {
-    const tail = r.token!.slice(-10);
-    console.log(`[push] recipient type=${type} user=${r.user_id} token=…${tail}`);
-  }
-
-  const messages = withToken.map((r) => ({
-    to: r.token!,
-    sound: 'default',
-    body,
-    data,
-    priority: 'high',
-  }));
-
-  const headers: Record<string, string> = { 'Content-Type': 'application/json', Accept: 'application/json' };
-  if (EXPO_ACCESS_TOKEN) headers['Authorization'] = `Bearer ${EXPO_ACCESS_TOKEN}`;
-
-  const res = await fetch('https://exp.host/--/api/v2/push/send', {
+  const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
+  const creds = btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`);
+  const res = await fetch(url, {
     method: 'POST',
-    headers,
-    body: JSON.stringify(messages),
+    headers: {
+      Authorization: `Basic ${creds}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({ To: to, From: TWILIO_PHONE_NUMBER, Body: body }).toString(),
   });
-  const responseText = await res.text();
-  trace.push({ step: 'expo_push', type, status: res.status, ok: res.ok, count: withToken.length, response: responseText.slice(0, 500) });
-  console.log(`[push] sent type=${type} count=${withToken.length} status=${res.status} expoResp=${responseText.slice(0, 300)}`);
-
-  const logRows = withToken.map((r) => ({
-    user_id: r.user_id,
-    callout_id: calloutId,
-    channel: 'push',
-    type,
-  }));
-  const { error: logError } = await supabase.schema('truvex').from('notification_log').insert(logRows);
-  if (logError) {
-    trace.push({ step: 'log_insert_failed', type, error: logError });
-    console.error(`[push] log insert failed type=${type}`, logError);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Twilio SMS error ${res.status}: ${text}`);
   }
+  const respData = await res.json();
+  console.log(`[sms] sent sid=${respData.sid} to=…${to.slice(-4)}`);
 }
 
 function formatShiftDate(date: string): string {

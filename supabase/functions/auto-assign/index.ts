@@ -4,8 +4,23 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const EXPO_ACCESS_TOKEN = Deno.env.get('EXPO_ACCESS_TOKEN');
+const TWILIO_ACCOUNT_SID = Deno.env.get('TWILIO_ACCOUNT_SID');
+const TWILIO_AUTH_TOKEN = Deno.env.get('TWILIO_AUTH_TOKEN');
+const TWILIO_PHONE_NUMBER = Deno.env.get('TWILIO_PHONE_NUMBER');
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+const SMS_ELIGIBLE_TYPES = new Set([
+  'callout_posted',
+  'first_acceptance',
+  'no_response_escalation',
+  'selected',
+  'selected_auto',
+  'worker_removed_manager',
+  'shift_reminder',
+]);
+
+type Recipient = { user_id: string; token: string | null | undefined; phone?: string | null };
 
 serve(async (_req) => {
   const invocationId = crypto.randomUUID().slice(0, 8);
@@ -17,6 +32,7 @@ serve(async (_req) => {
       handleAutoAssign(now, trace),
       handleNoResponseEscalation(now, trace),
       handleOneHourReminder(now, trace),
+      handleSmsFallback(now, trace),
     ]);
     return new Response(JSON.stringify({ ok: true, invocationId, trace }), {
       status: 200,
@@ -107,15 +123,14 @@ async function handleNoResponseEscalation(now: Date, trace: any[]) {
 
     const role = await fetchRole(c.role_id);
     const manager = await fetchProfile(c.manager_id);
-    if (!manager?.expo_push_token) {
-      trace.push({ step: 'row3_skipped_no_token', callout_id: c.id, manager_id: c.manager_id });
-      console.log(`[auto-assign] row3 skipped — manager ${c.manager_id} has no push token (callout ${c.id})`);
+    if (!manager) {
+      trace.push({ step: 'row3_skipped_no_manager', callout_id: c.id });
       continue;
     }
 
     const msg = `No one has accepted the ${role?.name ?? ''} shift on ${formatShiftDate(c.shift_date)} at ${formatTime(c.start_time)} yet. You may want to reach out or post again.`;
     await sendPushAndLog(
-      [{ user_id: manager.id, token: manager.expo_push_token }],
+      [{ user_id: manager.id, token: manager.expo_push_token, phone: manager.phone }],
       msg,
       { callout_id: c.id, type: 'no_response_escalation' },
       c.id,
@@ -136,14 +151,9 @@ async function handleNoResponseEscalation(now: Date, trace: any[]) {
 // shift_date + start_time for legacy rows with null shift_starts_at.
 // =====================================================================
 async function handleOneHourReminder(now: Date, trace: any[]) {
-  // Find filled callouts whose shift start is between 50 and 70 min from now.
-  // Cron runs every minute; a 20-min window avoids double-fire races and log-check handles idempotency.
   const lowerMs = now.getTime() + 50 * 60 * 1000;
   const upperMs = now.getTime() + 70 * 60 * 1000;
 
-  // shift_date is stored in the manager's local tz; today's UTC date can be
-  // yesterday or tomorrow locally depending on the timezone, so widen the
-  // candidate window to ±1 UTC day. The in-loop time check is authoritative.
   const today = now.toISOString().slice(0, 10);
   const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -165,7 +175,6 @@ async function handleOneHourReminder(now: Date, trace: any[]) {
     if (isNaN(shiftStart)) continue;
     if (shiftStart < lowerMs || shiftStart > upperMs) continue;
 
-    // 3-hour gate: assigned_at must be > 3h before shift_start
     if (c.assigned_at) {
       const assignedMs = new Date(c.assigned_at).getTime();
       if (shiftStart - assignedMs <= 3 * 60 * 60 * 1000) {
@@ -186,21 +195,78 @@ async function handleOneHourReminder(now: Date, trace: any[]) {
 
     const role = await fetchRole(c.role_id);
     const worker = await fetchProfile(c.assigned_worker_id);
-    if (!worker?.expo_push_token) {
-      trace.push({ step: 'row9_skipped_no_token', callout_id: c.id, worker_id: c.assigned_worker_id });
-      console.log(`[auto-assign] row9 skipped — worker ${c.assigned_worker_id} has no push token (callout ${c.id})`);
+    if (!worker) {
+      trace.push({ step: 'row9_skipped_no_worker', callout_id: c.id });
       continue;
     }
 
     const msg = `Reminder: your ${role?.name ?? ''} shift at ${location.name} starts in 1 hour.`;
     await sendPushAndLog(
-      [{ user_id: worker.id, token: worker.expo_push_token }],
+      [{ user_id: worker.id, token: worker.expo_push_token, phone: worker.phone }],
       msg,
       { callout_id: c.id, type: 'shift_reminder' },
       c.id,
       'shift_reminder',
       trace,
     );
+  }
+}
+
+// =====================================================================
+// SMS fallback: 2-minute fallback for unopened push notifications
+//
+// Runs every cron tick (every 5 min). Finds push log entries that are
+// 2+ minutes old with opened_at IS NULL and no existing SMS log for the
+// same (user_id, callout_id, type). Sends Twilio SMS using the stored body.
+//
+// NOTE: opened_at is not currently written by the mobile app. Until it is,
+// every push notification will trigger an SMS fallback after 2+ minutes.
+// This is intentional during development (doubles as delivery confirmation).
+// =====================================================================
+async function handleSmsFallback(now: Date, trace: any[]) {
+  const twoMinAgo = new Date(now.getTime() - 2 * 60 * 1000).toISOString();
+
+  const { data: pushLogs } = await supabase
+    .schema('truvex').from('notification_log')
+    .select('id, user_id, callout_id, type, body, user:profiles!notification_log_user_id_fkey(phone)')
+    .eq('channel', 'push')
+    .in('type', [...SMS_ELIGIBLE_TYPES])
+    .is('opened_at', null)
+    .lte('sent_at', twoMinAgo)
+    .not('body', 'is', null);
+
+  if (!pushLogs || pushLogs.length === 0) return;
+  trace.push({ step: 'sms_fallback_candidates', count: pushLogs.length });
+
+  for (const log of pushLogs) {
+    const phone = (log as any).user?.phone;
+    if (!phone) continue;
+
+    const { count } = await supabase
+      .schema('truvex').from('notification_log')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', log.user_id)
+      .eq('callout_id', log.callout_id)
+      .eq('type', log.type)
+      .eq('channel', 'sms');
+
+    if ((count ?? 0) > 0) continue;
+
+    try {
+      await sendSms(phone, log.body!);
+      await supabase.schema('truvex').from('notification_log').insert({
+        user_id: log.user_id,
+        callout_id: log.callout_id,
+        channel: 'sms',
+        type: log.type,
+        body: log.body,
+      });
+      trace.push({ step: 'sms_fallback_sent', type: log.type, user_id: log.user_id });
+      console.log(`[auto-assign sms] fallback type=${log.type} user=${log.user_id}`);
+    } catch (err) {
+      trace.push({ step: 'sms_fallback_failed', type: log.type, user_id: log.user_id, error: String(err) });
+      console.error(`[auto-assign sms] fallback failed type=${log.type} user=${log.user_id}:`, err);
+    }
   }
 }
 
@@ -238,8 +304,10 @@ function isPaidOrTrialing(location: any): boolean {
   return isPaid || trialActive;
 }
 
+// Sends Expo push to token holders, immediate SMS to no-token recipients
+// (for SMS-eligible types), and logs every send with the message body.
 async function sendPushAndLog(
-  recipients: { user_id: string; token: string | null | undefined }[],
+  recipients: Recipient[],
   body: string,
   data: Record<string, unknown>,
   calloutId: string | null,
@@ -247,33 +315,84 @@ async function sendPushAndLog(
   trace: any[],
 ) {
   const withToken = recipients.filter((r) => !!r.token);
-  if (withToken.length === 0) return;
+  const noToken = recipients.filter((r) => !r.token);
 
-  for (const r of withToken) {
-    const tail = r.token!.slice(-10);
-    console.log(`[auto-assign push] recipient type=${type} user=${r.user_id} token=…${tail}`);
+  if (withToken.length > 0) {
+    for (const r of withToken) {
+      console.log(`[auto-assign push] recipient type=${type} user=${r.user_id} token=…${r.token!.slice(-10)}`);
+    }
+
+    const messages = withToken.map((r) => ({
+      to: r.token!, sound: 'default', body, data, priority: 'high',
+    }));
+    const headers: Record<string, string> = { 'Content-Type': 'application/json', Accept: 'application/json' };
+    if (EXPO_ACCESS_TOKEN) headers['Authorization'] = `Bearer ${EXPO_ACCESS_TOKEN}`;
+
+    const res = await fetch('https://exp.host/--/api/v2/push/send', { method: 'POST', headers, body: JSON.stringify(messages) });
+    const responseText = await res.text();
+    trace.push({ step: 'expo_push', type, status: res.status, ok: res.ok, count: withToken.length, response: responseText.slice(0, 300) });
+    console.log(`[auto-assign push] sent type=${type} count=${withToken.length} status=${res.status}`);
+
+    const logRows = withToken.map((r) => ({
+      user_id: r.user_id,
+      callout_id: calloutId,
+      channel: 'push',
+      type,
+      body,
+    }));
+    await supabase.schema('truvex').from('notification_log').insert(logRows);
+  } else {
+    trace.push({ step: 'push_skipped_no_tokens', type, targets: recipients.length });
+    console.log(`[auto-assign push] skipped type=${type} targets=${recipients.length} noTokens`);
   }
 
-  const messages = withToken.map((r) => ({
-    to: r.token!, sound: 'default', body, data, priority: 'high',
-  }));
-  const headers: Record<string, string> = { 'Content-Type': 'application/json', Accept: 'application/json' };
-  if (EXPO_ACCESS_TOKEN) headers['Authorization'] = `Bearer ${EXPO_ACCESS_TOKEN}`;
+  // Immediate SMS for no-token recipients on SMS-eligible types
+  if (SMS_ELIGIBLE_TYPES.has(type)) {
+    const withPhone = noToken.filter((r) => !!r.phone);
+    for (const r of withPhone) {
+      try {
+        await sendSms(r.phone!, body);
+        await supabase.schema('truvex').from('notification_log').insert({
+          user_id: r.user_id,
+          callout_id: calloutId,
+          channel: 'sms',
+          type,
+          body,
+        });
+        trace.push({ step: 'sms_immediate', type, user_id: r.user_id });
+        console.log(`[auto-assign sms] immediate type=${type} user=${r.user_id}`);
+      } catch (err) {
+        trace.push({ step: 'sms_immediate_failed', type, user_id: r.user_id, error: String(err) });
+        console.error(`[auto-assign sms] immediate failed type=${type} user=${r.user_id}:`, err);
+      }
+    }
+    if (withPhone.length === 0 && noToken.length > 0) {
+      trace.push({ step: 'sms_skipped_no_phone', type, noTokenCount: noToken.length });
+    }
+  }
+}
 
-  const res = await fetch('https://exp.host/--/api/v2/push/send', {
-    method: 'POST', headers, body: JSON.stringify(messages),
+async function sendSms(to: string, body: string): Promise<void> {
+  if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
+    console.warn('[sms] Twilio env vars not set — skipping');
+    return;
+  }
+  const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
+  const creds = btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`);
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${creds}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({ To: to, From: TWILIO_PHONE_NUMBER, Body: body }).toString(),
   });
-  const responseText = await res.text();
-  trace.push({ step: 'expo_push', type, status: res.status, ok: res.ok, count: withToken.length, response: responseText.slice(0, 300) });
-  console.log(`[auto-assign push] sent type=${type} count=${withToken.length} status=${res.status} expoResp=${responseText.slice(0, 300)}`);
-
-  const logRows = withToken.map((r) => ({
-    user_id: r.user_id,
-    callout_id: calloutId,
-    channel: 'push',
-    type,
-  }));
-  await supabase.schema('truvex').from('notification_log').insert(logRows);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Twilio SMS error ${res.status}: ${text}`);
+  }
+  const respData = await res.json();
+  console.log(`[auto-assign sms] sent sid=${respData.sid} to=…${to.slice(-4)}`);
 }
 
 function formatShiftDate(date: string): string {

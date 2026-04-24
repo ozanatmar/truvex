@@ -466,6 +466,10 @@ async function sendSms(to: string, body: string): Promise<void> {
     console.warn('[sms] Twilio env vars not set — skipping');
     return;
   }
+  if (to.startsWith('+1555')) {
+    console.log(`[sms] skipped Supabase test number to=…${to.slice(-4)}`);
+    return;
+  }
   const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
   const creds = btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`);
   const res = await fetch(url, {

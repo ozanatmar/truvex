@@ -377,7 +377,7 @@ async function sendSms(to: string, body: string): Promise<void> {
     console.warn('[sms] Twilio env vars not set — skipping');
     return;
   }
-  if (to.startsWith('+1555')) {
+  if (to.startsWith('+15550000')) {
     console.log(`[auto-assign sms] skipped Supabase test number to=…${to.slice(-4)}`);
     return;
   }

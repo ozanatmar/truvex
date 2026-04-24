@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ScrollView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Location } from '../types/database';
 
 interface Props {
@@ -25,6 +26,7 @@ export default function LocationPickerSheet({
   onClose,
   onAddLocation,
 }: Props) {
+  const insets = useSafeAreaInsets();
   function handleAddLocationPress() {
     onAddLocation();
   }
@@ -37,7 +39,7 @@ export default function LocationPickerSheet({
       onRequestClose={onClose}
     >
       <View style={styles.container}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
           <Text style={styles.title}>Switch Location</Text>
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
             <Text style={styles.closeText}>Done</Text>
@@ -91,7 +93,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 24,
+    // paddingTop applied inline from safe-area inset + 16.
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#2a2a40',

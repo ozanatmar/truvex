@@ -8,7 +8,9 @@ const EXPO_ACCESS_TOKEN = Deno.env.get('EXPO_ACCESS_TOKEN');
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 serve(async (_req) => {
+  const invocationId = crypto.randomUUID().slice(0, 8);
   const trace: any[] = [];
+  console.log(`[auto-assign ${invocationId}] tick ${new Date().toISOString()}`);
   try {
     const now = new Date();
     await Promise.all([
@@ -16,13 +18,13 @@ serve(async (_req) => {
       handleNoResponseEscalation(now, trace),
       handleOneHourReminder(now, trace),
     ]);
-    return new Response(JSON.stringify({ ok: true, trace }), {
+    return new Response(JSON.stringify({ ok: true, invocationId, trace }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (err) {
-    console.error('auto-assign error:', err);
-    return new Response(JSON.stringify({ ok: false, error: String(err), trace }), {
+    console.error(`[auto-assign ${invocationId}] error:`, err);
+    return new Response(JSON.stringify({ ok: false, invocationId, error: String(err), trace }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -105,7 +107,11 @@ async function handleNoResponseEscalation(now: Date, trace: any[]) {
 
     const role = await fetchRole(c.role_id);
     const manager = await fetchProfile(c.manager_id);
-    if (!manager?.expo_push_token) continue;
+    if (!manager?.expo_push_token) {
+      trace.push({ step: 'row3_skipped_no_token', callout_id: c.id, manager_id: c.manager_id });
+      console.log(`[auto-assign] row3 skipped — manager ${c.manager_id} has no push token (callout ${c.id})`);
+      continue;
+    }
 
     const msg = `No one has accepted the ${role?.name ?? ''} shift on ${formatShiftDate(c.shift_date)} at ${formatTime(c.start_time)} yet. You may want to reach out or post again.`;
     await sendPushAndLog(
@@ -124,30 +130,38 @@ async function handleNoResponseEscalation(now: Date, trace: any[]) {
 //
 // Fires when a filled callout's shift is ~1 hour away, but only if the
 // worker was assigned more than 3 hours before the shift starts.
-// TZ caveat: shift_date + start_time is treated as UTC for now.
-// Fix by adding locations.timezone and localizing the timestamp.
+//
+// Uses shift_starts_at (timestamptz, written by the client at post time in
+// the manager's local tz). Falls back to a naive UTC parse of
+// shift_date + start_time for legacy rows with null shift_starts_at.
 // =====================================================================
 async function handleOneHourReminder(now: Date, trace: any[]) {
-  // Find filled callouts whose (shift_date + start_time) is between 50 and 70 min from now.
+  // Find filled callouts whose shift start is between 50 and 70 min from now.
   // Cron runs every minute; a 20-min window avoids double-fire races and log-check handles idempotency.
   const lowerMs = now.getTime() + 50 * 60 * 1000;
   const upperMs = now.getTime() + 70 * 60 * 1000;
 
+  // shift_date is stored in the manager's local tz; today's UTC date can be
+  // yesterday or tomorrow locally depending on the timezone, so widen the
+  // candidate window to ±1 UTC day. The in-loop time check is authoritative.
   const today = now.toISOString().slice(0, 10);
   const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
   const { data: callouts } = await supabase
     .schema('truvex').from('callouts')
-    .select('id, assigned_worker_id, assigned_at, location_id, role_id, shift_date, start_time')
+    .select('id, assigned_worker_id, assigned_at, location_id, role_id, shift_date, start_time, shift_starts_at')
     .eq('status', 'filled')
-    .in('shift_date', [today, tomorrow])
+    .in('shift_date', [yesterday, today, tomorrow])
     .not('assigned_worker_id', 'is', null);
 
   if (!callouts || callouts.length === 0) return;
   trace.push({ step: 'row9_candidates', count: callouts.length });
 
   for (const c of callouts) {
-    const shiftStart = new Date(`${c.shift_date}T${c.start_time}Z`).getTime();
+    const shiftStart = c.shift_starts_at
+      ? new Date(c.shift_starts_at).getTime()
+      : new Date(`${c.shift_date}T${c.start_time}Z`).getTime();
     if (isNaN(shiftStart)) continue;
     if (shiftStart < lowerMs || shiftStart > upperMs) continue;
 
@@ -172,7 +186,11 @@ async function handleOneHourReminder(now: Date, trace: any[]) {
 
     const role = await fetchRole(c.role_id);
     const worker = await fetchProfile(c.assigned_worker_id);
-    if (!worker?.expo_push_token) continue;
+    if (!worker?.expo_push_token) {
+      trace.push({ step: 'row9_skipped_no_token', callout_id: c.id, worker_id: c.assigned_worker_id });
+      console.log(`[auto-assign] row9 skipped — worker ${c.assigned_worker_id} has no push token (callout ${c.id})`);
+      continue;
+    }
 
     const msg = `Reminder: your ${role?.name ?? ''} shift at ${location.name} starts in 1 hour.`;
     await sendPushAndLog(
@@ -231,6 +249,11 @@ async function sendPushAndLog(
   const withToken = recipients.filter((r) => !!r.token);
   if (withToken.length === 0) return;
 
+  for (const r of withToken) {
+    const tail = r.token!.slice(-10);
+    console.log(`[auto-assign push] recipient type=${type} user=${r.user_id} token=…${tail}`);
+  }
+
   const messages = withToken.map((r) => ({
     to: r.token!, sound: 'default', body, data, priority: 'high',
   }));
@@ -242,6 +265,7 @@ async function sendPushAndLog(
   });
   const responseText = await res.text();
   trace.push({ step: 'expo_push', type, status: res.status, ok: res.ok, count: withToken.length, response: responseText.slice(0, 300) });
+  console.log(`[auto-assign push] sent type=${type} count=${withToken.length} status=${res.status} expoResp=${responseText.slice(0, 300)}`);
 
   const logRows = withToken.map((r) => ({
     user_id: r.user_id,

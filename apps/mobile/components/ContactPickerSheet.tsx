@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import * as Contacts from 'expo-contacts';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Props {
   visible: boolean;
@@ -40,6 +41,7 @@ function formatUSPhone(digits: string): string {
 }
 
 export default function ContactPickerSheet({ visible, onClose, onSelect }: Props) {
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<Row[]>([]);
   const [query, setQuery] = useState('');
@@ -113,7 +115,7 @@ export default function ContactPickerSheet({ visible, onClose, onSelect }: Props
       onRequestClose={onClose}
     >
       <View style={styles.container}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
           <Text style={styles.title}>Import from Contacts</Text>
           <TouchableOpacity
             onPress={onClose}
@@ -178,7 +180,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 24,
+    // paddingTop applied inline from safe-area inset + 16.
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#2a2a40',

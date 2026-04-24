@@ -107,6 +107,11 @@ export default function PostCalloutScreen() {
     if (!isValid || !activeLocation || !session) return;
     setLoading(true);
 
+    // shift_starts_at is the source of truth for time-based crons (row 9
+    // reminder). Computed here using the manager's device tz so a wall-clock
+    // "6pm today" becomes the correct UTC instant no matter where they are.
+    const shiftStartsAt = new Date(`${shiftDate}T${startTime}`).toISOString();
+
     const { error } = await supabase.schema('truvex').from('callouts').insert({
       location_id: activeLocation.id,
       manager_id: session.user.id,
@@ -114,6 +119,7 @@ export default function PostCalloutScreen() {
       shift_date: shiftDate,
       start_time: startTime,
       end_time: endTime,
+      shift_starts_at: shiftStartsAt,
       notes: notes.trim() || null,
       status: 'open',
     });

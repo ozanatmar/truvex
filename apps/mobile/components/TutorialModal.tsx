@@ -8,6 +8,7 @@ import {
   ScrollView,
   Dimensions,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -87,6 +88,7 @@ interface Props {
 }
 
 export default function TutorialModal({ visible, role, onClose }: Props) {
+  const insets = useSafeAreaInsets();
   const [index, setIndex] = useState(0);
   const slides = role === 'manager' ? MANAGER_SLIDES : WORKER_SLIDES;
   const slide = slides[index];
@@ -114,7 +116,7 @@ export default function TutorialModal({ visible, role, onClose }: Props) {
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
       <View style={styles.container}>
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
           <TouchableOpacity onPress={handleClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
             <Text style={styles.closeText}>Close</Text>
           </TouchableOpacity>
@@ -160,7 +162,7 @@ const styles = StyleSheet.create({
     paddingBottom: 48,
   },
   header: {
-    paddingTop: 20,
+    // paddingTop applied inline from safe-area inset + 12.
     alignItems: 'flex-end',
   },
   closeText: {

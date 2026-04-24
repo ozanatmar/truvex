@@ -10,6 +10,7 @@ import {
   registerForPushNotifications,
   savePushToken,
   addNotificationResponseListener,
+  addNotificationReceivedListener,
   getLastNotificationResponse,
 } from '../lib/notifications';
 import LoadingScreen from '../components/LoadingScreen';
@@ -130,17 +131,32 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
+    // Log every push that lands on the device (foreground + background wake-ups)
+    // so we can correlate against server-side [push] logs and spot duplicate deliveries.
+    const receivedSub = addNotificationReceivedListener((n) => {
+      const reqId = n.request.identifier;
+      const type = n.request.content.data?.type;
+      const cid = n.request.content.data?.callout_id;
+      console.log(`[notif received] reqId=${reqId} type=${type} callout=${cid}`);
+    });
     // Warm tap — app already running
-    const sub = addNotificationResponseListener((response) => {
+    const responseSub = addNotificationResponseListener((response) => {
+      const reqId = response.notification.request.identifier;
       const cid = response.notification.request.content.data?.callout_id;
+      console.log(`[notif tapped] reqId=${reqId} callout=${cid}`);
       if (cid) pendingCalloutId.current = String(cid);
     });
     // Cold start — app launched by tapping a notification
     getLastNotificationResponse().then((resp) => {
       const cid = resp?.notification.request.content.data?.callout_id;
+      const reqId = resp?.notification.request.identifier;
+      if (reqId) console.log(`[notif cold-start tap] reqId=${reqId} callout=${cid}`);
       if (cid && !pendingCalloutId.current) pendingCalloutId.current = String(cid);
     });
-    return () => sub.remove();
+    return () => {
+      receivedSub.remove();
+      responseSub.remove();
+    };
   }, []);
 
   // Consume pending callout tap once navigator + bootstrap are ready.

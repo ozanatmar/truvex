@@ -16,20 +16,26 @@ type WebhookPayload = {
 };
 
 serve(async (req) => {
+  const invocationId = crypto.randomUUID().slice(0, 8);
+  const startedAt = new Date().toISOString();
   const trace: any[] = [];
+  console.log(`[send-notification ${invocationId}] start ${startedAt}`);
   try {
     const payload = (await req.json()) as WebhookPayload;
-    trace.push({ step: 'received', table: payload.table, event: payload.type });
+    const recordId = (payload.record?.id ?? payload.old_record?.id ?? null) as string | null;
+    trace.push({ step: 'received', invocationId, table: payload.table, event: payload.type, recordId });
+    console.log(`[send-notification ${invocationId}] received table=${payload.table} event=${payload.type} recordId=${recordId}`);
 
-    const result = await dispatch(payload, trace);
-    return json({ ok: true, trace, result }, 200);
+    const result = await dispatch(payload, trace, invocationId);
+    console.log(`[send-notification ${invocationId}] done result=${JSON.stringify(result)}`);
+    return json({ ok: true, invocationId, trace, result }, 200);
   } catch (err) {
-    console.error('send-notification error:', err);
-    return json({ ok: false, error: String(err), trace }, 500);
+    console.error(`[send-notification ${invocationId}] error:`, err);
+    return json({ ok: false, invocationId, error: String(err), trace }, 500);
   }
 });
 
-async function dispatch(payload: WebhookPayload, trace: any[]) {
+async function dispatch(payload: WebhookPayload, trace: any[], invocationId: string) {
   const { table, type, record, old_record } = payload;
 
   if (table === 'callouts' && type === 'INSERT' && record?.status === 'open') {
@@ -365,7 +371,14 @@ async function pushAndLog(
   const withToken = recipients.filter((r) => !!r.token);
   if (withToken.length === 0) {
     trace.push({ step: 'push_skipped_no_tokens', type, targets: recipients.length });
+    console.log(`[push] skipped type=${type} targets=${recipients.length} noTokens`);
     return;
+  }
+
+  // Log each recipient so we can tell "sent once to two tokens" apart from "sent twice to one token"
+  for (const r of withToken) {
+    const tail = r.token!.slice(-10);
+    console.log(`[push] recipient type=${type} user=${r.user_id} token=…${tail}`);
   }
 
   const messages = withToken.map((r) => ({
@@ -386,6 +399,7 @@ async function pushAndLog(
   });
   const responseText = await res.text();
   trace.push({ step: 'expo_push', type, status: res.status, ok: res.ok, count: withToken.length, response: responseText.slice(0, 500) });
+  console.log(`[push] sent type=${type} count=${withToken.length} status=${res.status} expoResp=${responseText.slice(0, 300)}`);
 
   const logRows = withToken.map((r) => ({
     user_id: r.user_id,
@@ -394,7 +408,10 @@ async function pushAndLog(
     type,
   }));
   const { error: logError } = await supabase.schema('truvex').from('notification_log').insert(logRows);
-  if (logError) trace.push({ step: 'log_insert_failed', type, error: logError });
+  if (logError) {
+    trace.push({ step: 'log_insert_failed', type, error: logError });
+    console.error(`[push] log insert failed type=${type}`, logError);
+  }
 }
 
 function formatShiftDate(date: string): string {

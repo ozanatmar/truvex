@@ -74,6 +74,11 @@ export default function ManagerSettingsScreen() {
   const [deleting, setDeleting] = useState(false);
   const [subActionLoading, setSubActionLoading] = useState<'upgrade' | 'manage' | 'cancel' | 'reactivate' | null>(null);
 
+  // Depend on the id, not the whole object. setActiveLocation below writes a
+  // new object identity to Zustand each refresh, so depending on the object
+  // makes this callback churn and useFocusEffect re-fires every refresh,
+  // which in turn rebounds into every child that keys off activeLocation
+  // (e.g. ManageRolesSheet's useEffect was stuck reloading nonstop).
   const refresh = useCallback(async () => {
     if (!activeLocation) return;
     const { data } = await supabase
@@ -85,7 +90,8 @@ export default function ManagerSettingsScreen() {
       setLocation(data);
       setActiveLocation(data);
     }
-  }, [activeLocation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeLocation?.id]);
 
   useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
 

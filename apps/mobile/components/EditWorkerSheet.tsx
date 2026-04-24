@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../lib/store';
 import { Role } from '../types/database';
@@ -26,6 +27,7 @@ interface Props {
 
 export default function EditWorkerSheet({ visible, workerId, onClose, onSaved }: Props) {
   const { activeLocation } = useStore();
+  const insets = useSafeAreaInsets();
 
   const [memberRowId, setMemberRowId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -150,7 +152,7 @@ export default function EditWorkerSheet({ visible, workerId, onClose, onSaved }:
           style={styles.container}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <View style={styles.header}>
+          <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
             <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
               <Text style={styles.cancel}>Cancel</Text>
             </TouchableOpacity>
@@ -230,7 +232,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 24,
+    // paddingTop applied inline from safe-area inset + 16 so the header
+    // sits below the status bar / notch.
     paddingBottom: 16,
     backgroundColor: '#1a1a2e',
   },

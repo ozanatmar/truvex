@@ -8,7 +8,9 @@ import {
   RefreshControl,
   ActivityIndicator,
   Alert,
+  AppState,
 } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../lib/store';
 import { Callout, Role, Location } from '../../types/database';
@@ -110,6 +112,22 @@ export default function WorkerHomeScreen() {
 
     return () => { supabase.removeChannel(channel); };
   }, [session, fetchCallouts]);
+
+  // Realtime misses events while the app is backgrounded / the device is asleep.
+  // Refetch on screen focus (tab switch, notification tap) and on app foreground
+  // so the list catches up on callouts posted while we weren't listening.
+  useFocusEffect(
+    useCallback(() => {
+      fetchCallouts();
+    }, [fetchCallouts])
+  );
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') fetchCallouts();
+    });
+    return () => sub.remove();
+  }, [fetchCallouts]);
 
   async function handleResponse(calloutId: string, response: 'accepted' | 'declined') {
     if (!session) return;

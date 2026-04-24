@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../lib/store';
 
@@ -23,20 +24,25 @@ interface Props {
 
 export default function ManageRolesSheet({ visible, onClose, onSaved }: Props) {
   const { activeLocation } = useStore();
+  const insets = useSafeAreaInsets();
   const [roles, setRoles] = useState<string[]>([]);
   const [originalRoles, setOriginalRoles] = useState<string[]>([]);
   const [newRole, setNewRole] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Key off the location id, not the object — Zustand replaces the
+  // activeLocation reference whenever the settings screen refreshes, and
+  // depending on the object would reset the sheet's state on every refresh.
+  const locationId = activeLocation?.id;
   useEffect(() => {
-    if (!visible || !activeLocation) return;
+    if (!visible || !locationId) return;
     setLoading(true);
     setNewRole('');
     supabase
       .schema('truvex').from('roles')
       .select('name')
-      .eq('location_id', activeLocation.id)
+      .eq('location_id', locationId)
       .order('created_at', { ascending: true })
       .then(({ data }) => {
         const names = (data ?? []).map((r: any) => r.name as string);
@@ -44,7 +50,7 @@ export default function ManageRolesSheet({ visible, onClose, onSaved }: Props) {
         setOriginalRoles(names);
         setLoading(false);
       });
-  }, [visible, activeLocation]);
+  }, [visible, locationId]);
 
   function removeRole(role: string) {
     setRoles((prev) => prev.filter((r) => r !== role));
@@ -105,7 +111,7 @@ export default function ManageRolesSheet({ visible, onClose, onSaved }: Props) {
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
             <Text style={styles.cancel}>Cancel</Text>
           </TouchableOpacity>
@@ -178,7 +184,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 24,
+    // paddingTop is applied inline from safe-area inset + 16 so the header
+    // sits below the Android status bar / iOS notch.
     paddingBottom: 16,
     backgroundColor: '#1a1a2e',
   },

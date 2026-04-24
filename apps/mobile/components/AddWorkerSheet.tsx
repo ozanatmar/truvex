@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../lib/store';
 import { Role } from '../types/database';
@@ -34,6 +35,7 @@ function formatUSPhone(raw: string): string {
 
 export default function AddWorkerSheet({ visible, onClose, onAdded, onOpenUpgrade }: Props) {
   const { activeLocation, session } = useStore();
+  const insets = useSafeAreaInsets();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [primaryRoleId, setPrimaryRoleId] = useState('');
@@ -156,7 +158,7 @@ export default function AddWorkerSheet({ visible, onClose, onAdded, onOpenUpgrad
     >
       {atLimit ? (
         <View style={styles.container}>
-          <View style={styles.header}>
+          <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
             <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
               <Text style={styles.cancel}>Cancel</Text>
             </TouchableOpacity>
@@ -186,7 +188,7 @@ export default function AddWorkerSheet({ visible, onClose, onAdded, onOpenUpgrad
           style={styles.container}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <View style={styles.header}>
+          <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
             <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
               <Text style={styles.cancel}>Cancel</Text>
             </TouchableOpacity>
@@ -290,7 +292,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 24,
+    // paddingTop applied inline from safe-area inset + 16.
     paddingBottom: 16,
     backgroundColor: '#1a1a2e',
   },

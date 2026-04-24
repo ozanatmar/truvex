@@ -441,8 +441,11 @@ create table truvex.shift_presets (
 
 **SMS policy:** Paid-tier push is always sent. SMS is a 2-minute fallback for workers whose push wasn't opened, but **only for the rows marked `SMS: yes`**. SMS is reserved for notifications that require action or where a missed message is costly (a worker failing to show up, or showing up when they shouldn't). Announcements (e.g. "shift was filled by someone else") are push-only to keep Twilio spend down.
 
+Row 0 (invite) is the exception: it fires on **all tiers** because workers need to know to download the app before any callout notifications can reach them. It is SMS-only (no push token exists yet) and is not logged to `notification_log` (the invited worker has no profile row yet).
+
 | # | Trigger | Recipient | Message | SMS |
 |---|---|---|---|---|
+| 0 | Manager adds worker by phone number (pending invite) | Invited worker's phone | "You've been invited to join [Location] on Truvex. Sign in with this number to start accepting shifts." | Yes (all tiers) |
 | 1 | Callout posted | Eligible workers (matching role, not muted, active) | "New shift: [Role] on [date] [start]–[end]. Open Truvex to accept." | Yes |
 | 2 | First worker accepts (instant) | Manager | "[Worker] accepted the [Role] shift on [date] at [start]. Tap to confirm who covers." | Yes |
 | 3 | 15 min, no acceptors | Manager | "No one has accepted the [Role] shift on [date] at [start] yet. You may want to reach out or post again." | Yes |
@@ -462,7 +465,7 @@ create table truvex.shift_presets (
 - **No reassign / repost function in v1.** Row 7's message reminds the manager to post a fresh callout manually.
 - **1-hour reminder (row 9) fires only if the worker was assigned more than 3 hours before shift start.** If the assignment happened within 3 hours of the shift, the assignment notification itself (row 4a/4b) is the only reminder — a second ping would be redundant.
 - Worker declines → no notification (response is recorded silently).
-- Worker joins a location → no notification (they are active in-app).
+- Worker invited (pending invite, no profile yet) → row 0 fires. Worker who already has an account and is added directly → no notification (they appear in-app immediately).
 - Manager-initiated cancel of an unassigned callout → no manager confirmation push (they just tapped the button).
 
 ---

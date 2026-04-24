@@ -73,6 +73,10 @@ async function dispatch(payload: WebhookPayload, trace: any[], invocationId: str
     return handleResponseAccepted(record, trace);
   }
 
+  if (table === 'location_members' && type === 'INSERT' && record) {
+    return handleWorkerInvited(record, trace);
+  }
+
   if (table === 'location_members' && type === 'DELETE' && old_record) {
     return handleWorkerRemoved(old_record, trace);
   }
@@ -264,6 +268,38 @@ async function handleCalloutCancelled(callout: any, trace: any[]) {
     'shift_cancelled',
     trace,
   );
+  return { done: true };
+}
+
+// =====================================================================
+// Row 0: Worker invited by phone number → SMS to invited_phone
+//
+// Fires on all tiers. The invited worker has no profile yet so we
+// cannot log to notification_log (user_id NOT NULL). Fire-and-forget.
+// =====================================================================
+async function handleWorkerInvited(member: any, trace: any[]) {
+  // Only fire for pending invites: worker type, no user_id yet, phone present
+  if (member.member_type !== 'worker' || member.user_id || !member.invited_phone) {
+    trace.push({ step: 'not_pending_invite' });
+    return { skipped: 'not_pending_invite' };
+  }
+
+  trace.push({ step: 'row0_start', location_id: member.location_id });
+
+  const location = await fetchLocation(member.location_id);
+  if (!location) return { stopped: 'location_missing' };
+
+  const msg = `You've been invited to join ${location.name} on Truvex. Sign in with this number to start accepting shifts.`;
+
+  try {
+    await sendSms(member.invited_phone, msg);
+    trace.push({ step: 'row0_sent' });
+    console.log(`[sms] worker invited location=${member.location_id} phone=…${member.invited_phone.slice(-4)}`);
+  } catch (err) {
+    trace.push({ step: 'row0_failed', error: String(err) });
+    console.error(`[sms] worker invited failed:`, err);
+  }
+
   return { done: true };
 }
 

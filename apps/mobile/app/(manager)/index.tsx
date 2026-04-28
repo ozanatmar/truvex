@@ -10,6 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../lib/store';
 import { CalloutWithRole, Location } from '../../types/database';
@@ -144,8 +145,11 @@ export default function ManagerHomeScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => setShowPicker(true)} activeOpacity={0.7}>
-          <Text style={styles.locationName}>{activeLocation?.name} ▾</Text>
+        <TouchableOpacity onPress={() => setShowPicker(true)} activeOpacity={0.7} style={styles.locationTouchable}>
+          <View style={styles.locationRow}>
+            <Text style={styles.locationName} numberOfLines={1}>{activeLocation?.name}</Text>
+            <Ionicons name="chevron-down" size={18} color="#fff" style={{ marginLeft: 4 }} />
+          </View>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.postButton}
@@ -246,7 +250,9 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     backgroundColor: '#1a1a2e',
   },
-  locationName: { fontSize: 20, fontWeight: '800', color: '#fff', flexShrink: 1, marginRight: 12 },
+  locationTouchable: { flex: 1, marginRight: 12 },
+  locationRow: { flexDirection: 'row', alignItems: 'center' },
+  locationName: { fontSize: 20, fontWeight: '800', color: '#fff', flex: 1 },
   postButton: {
     backgroundColor: '#F5853F',
     borderRadius: 10,

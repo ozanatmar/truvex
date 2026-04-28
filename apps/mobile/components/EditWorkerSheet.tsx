@@ -184,15 +184,16 @@ export default function EditWorkerSheet({ visible, workerId, onClose, onSaved }:
               {roles.map((role) => (
                 <TouchableOpacity
                   key={role.id}
-                  style={[styles.roleChip, primaryRoleId === role.id && styles.primaryChip]}
                   onPress={() => {
                     setPrimaryRoleId(role.id);
                     setAdditionalRoleIds((prev) => prev.filter((id) => id !== role.id));
                   }}
                 >
-                  <Text style={[styles.roleChipText, primaryRoleId === role.id && styles.primaryChipText]}>
-                    {role.name}
-                  </Text>
+                  <View style={[styles.roleChip, primaryRoleId === role.id && styles.primaryChip]}>
+                    <Text style={[styles.roleChipText, primaryRoleId === role.id && styles.primaryChipText]}>
+                      {role.name + '  '}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               ))}
             </View>
@@ -204,16 +205,17 @@ export default function EditWorkerSheet({ visible, workerId, onClose, onSaved }:
                 .map((role) => (
                   <TouchableOpacity
                     key={role.id}
-                    style={[styles.roleChip, additionalRoleIds.includes(role.id) && styles.additionalChip]}
                     onPress={() =>
                       setAdditionalRoleIds((prev) =>
                         prev.includes(role.id) ? prev.filter((id) => id !== role.id) : [...prev, role.id]
                       )
                     }
                   >
-                    <Text style={[styles.roleChipText, additionalRoleIds.includes(role.id) && styles.additionalChipText]}>
-                      {role.name}
-                    </Text>
+                    <View style={[styles.roleChip, additionalRoleIds.includes(role.id) && styles.additionalChip]}>
+                      <Text style={[styles.roleChipText, additionalRoleIds.includes(role.id) && styles.additionalChipText]}>
+                        {role.name + '  '}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
                 ))}
             </View>
@@ -237,10 +239,10 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     backgroundColor: '#1a1a2e',
   },
-  cancel: { color: '#7A8899', fontSize: 16 },
-  title: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  save: { color: '#0E7C7B', fontSize: 16, fontWeight: '700' },
-  content: { padding: 20, gap: 10 },
+  cancel: { color: '#7A8899', fontSize: 16, minWidth: 60 },
+  title: { flex: 1, color: '#fff', fontSize: 17, fontWeight: '700', textAlign: 'center' },
+  save: { color: '#0E7C7B', fontSize: 16, fontWeight: '700', minWidth: 60, textAlign: 'right' },
+  content: { padding: 20 },
   label: { fontSize: 13, fontWeight: '600', color: '#aaa', marginTop: 8, marginBottom: 4 },
   input: {
     backgroundColor: '#1a1a2e',
@@ -256,8 +258,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
-  roleGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  roleChip: { borderWidth: 1, borderColor: '#333', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
+  roleGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  roleChip: { backgroundColor: '#2a2a40', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, marginRight: 8, marginBottom: 8 },
   primaryChip: { backgroundColor: '#0E7C7B', borderColor: '#0E7C7B' },
   additionalChip: { backgroundColor: 'rgba(14,124,123,0.15)', borderColor: '#0E7C7B' },
   roleChipText: { color: '#666', fontSize: 13, fontWeight: '600' },

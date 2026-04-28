@@ -68,7 +68,7 @@ export default function RootLayout() {
   useFonts({ DMSans_700Bold, DMSans_800ExtraBold });
 
   const {
-    setSession, setProfile, setActiveLocation, setAllLocations, setMemberType, setIsLoading, reset,
+    session, setSession, setProfile, setActiveLocation, setAllLocations, setMemberType, setIsLoading, reset,
     isLoading, memberType, allLocations,
   } = useStore();
   const router = useRouter();
@@ -76,6 +76,11 @@ export default function RootLayout() {
   const bootstrapping = useRef(false);
   const hasBootstrapped = useRef(false);
   const pendingCalloutId = useRef<string | null>(null);
+  // Keep current session + memberType accessible inside stable listener closures
+  const sessionRef = useRef(session);
+  const memberTypeRef = useRef(memberType);
+  useEffect(() => { sessionRef.current = session; }, [session]);
+  useEffect(() => { memberTypeRef.current = memberType; }, [memberType]);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
@@ -138,6 +143,9 @@ export default function RootLayout() {
       const type = n.request.content.data?.type;
       const cid = n.request.content.data?.callout_id;
       console.log(`[notif received] reqId=${reqId} type=${type} callout=${cid}`);
+      if (type === 'worker_added' && sessionRef.current) {
+        refreshMembership(sessionRef.current.user.id);
+      }
     });
     // Warm tap — app already running
     const responseSub = addNotificationResponseListener((response) => {
@@ -185,6 +193,23 @@ export default function RootLayout() {
       }
     })();
   }, [navState?.key, isLoading, memberType, allLocations, router, setActiveLocation]);
+
+  async function refreshMembership(userId: string) {
+    if (memberTypeRef.current === 'manager') return;
+    await supabase.schema('truvex').rpc('claim_pending_invites').catch(() => {});
+    const { data: membership } = await supabase
+      .schema('truvex').from('location_members')
+      .select('*, location:locations(*)')
+      .eq('user_id', userId)
+      .eq('member_type', 'worker')
+      .eq('status', 'active')
+      .limit(1)
+      .maybeSingle();
+    if (membership) {
+      setActiveLocation((membership as any).location);
+      setMemberType('worker');
+    }
+  }
 
   async function bootstrapUser(userId: string) {
     if (bootstrapping.current) return;

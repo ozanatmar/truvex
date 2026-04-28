@@ -19,6 +19,7 @@ const SMS_ELIGIBLE_TYPES = new Set([
   'selected_auto',
   'worker_removed_manager',
   'shift_reminder',
+  'worker_added',
 ]);
 
 type Recipient = { user_id: string; token: string | null | undefined; phone?: string | null };
@@ -255,9 +256,21 @@ async function handleCalloutCancelled(callout: any, trace: any[]) {
 
   if (!notified || notified.length === 0) { trace.push({ step: 'no_notified' }); return { stopped: 'no_notified' }; }
 
-  // Deduplicate by user_id
+  // Exclude workers who have since left the location
+  const { data: currentMembers } = await supabase
+    .schema('truvex').from('location_members')
+    .select('user_id')
+    .eq('location_id', callout.location_id)
+    .eq('member_type', 'worker');
+  const currentMemberIds = new Set((currentMembers ?? []).map((m: any) => m.user_id));
+
+  // Deduplicate by user_id and skip departed workers
   const seen = new Set<string>();
-  const unique = notified.filter((n: any) => (seen.has(n.user_id) ? false : seen.add(n.user_id)));
+  const unique = notified.filter((n: any) => {
+    if (seen.has(n.user_id) || !currentMemberIds.has(n.user_id)) return false;
+    seen.add(n.user_id);
+    return true;
+  });
 
   const msg = `The ${role?.name ?? ''} shift on ${formatShiftDate(callout.shift_date)} at ${formatTime(callout.start_time)} has been cancelled.`;
   await pushAndLog(
@@ -273,34 +286,107 @@ async function handleCalloutCancelled(callout: any, trace: any[]) {
 
 // =====================================================================
 // Row 0: Worker invited by phone number → SMS to invited_phone
+// Row 0b: Existing Truvex user added to new location → push + SMS
 //
-// Fires on all tiers. The invited worker has no profile yet so we
-// cannot log to notification_log (user_id NOT NULL). Fire-and-forget.
+// Both fire on all tiers. Row 0 cannot log to notification_log (the
+// invited worker has no profile row yet). Row 0b logs normally.
 // =====================================================================
 async function handleWorkerInvited(member: any, trace: any[]) {
-  // Only fire for pending invites: worker type, no user_id yet, phone present
-  if (member.member_type !== 'worker' || member.user_id || !member.invited_phone) {
-    trace.push({ step: 'not_pending_invite' });
-    return { skipped: 'not_pending_invite' };
+  if (member.member_type !== 'worker') {
+    trace.push({ step: 'not_worker' });
+    return { skipped: 'not_worker' };
   }
 
-  trace.push({ step: 'row0_start', location_id: member.location_id });
+  // Row 0 / 0b: Pending invite — client inserted user_id=null because RLS
+  // blocks the manager from reading other users' profiles. Check here (with
+  // service-role access) whether the phone already has a profile. If yes,
+  // treat this as row 0b (existing user, push + SMS). If no, row 0 (SMS only).
+  if (!member.user_id && member.invited_phone) {
+    const location = await fetchLocation(member.location_id);
+    if (!location) return { stopped: 'location_missing' };
 
-  const location = await fetchLocation(member.location_id);
-  if (!location) return { stopped: 'location_missing' };
+    const { data: existingProfile } = await supabase
+      .schema('truvex').from('profiles')
+      .select('id, phone, name, expo_push_token')
+      .eq('phone', member.invited_phone)
+      .maybeSingle();
 
-  const msg = `You've been invited to join ${location.name} on Truvex. Sign in with this number to start accepting shifts.`;
+    if (existingProfile) {
+      // Row 0b: profile exists — same flow as if user_id had been set
+      trace.push({ step: 'row0b_via_phone_lookup', location_id: member.location_id, user_id: existingProfile.id });
+      const msg = `You've been added to ${location.name} on Truvex. Open the app to start accepting shifts.`;
+      await pushAndLog(
+        [{ user_id: existingProfile.id, token: existingProfile.expo_push_token, phone: existingProfile.phone }],
+        msg,
+        { location_id: member.location_id, type: 'worker_added' },
+        null,
+        'worker_added',
+        trace,
+      );
+      await sendWorkerAddedSms(existingProfile.id, existingProfile.phone, msg, member.location_id, trace);
+      return { done: true };
+    }
 
+    // Row 0: genuinely new user — SMS only
+    trace.push({ step: 'row0_start', location_id: member.location_id });
+    const msg = `You've been invited to join ${location.name} on Truvex. Download the Truvex app and sign in with this number to accept shifts.`;
+    try {
+      await sendSms(member.invited_phone, msg);
+      trace.push({ step: 'row0_sent' });
+      console.log(`[sms] worker invited location=${member.location_id} phone=…${member.invited_phone.slice(-4)}`);
+    } catch (err) {
+      trace.push({ step: 'row0_failed', error: String(err) });
+      console.error(`[sms] worker invited failed:`, err);
+    }
+    return { done: true };
+  }
+
+  // Row 0b: Existing user added to a new location — push + SMS (all tiers)
+  if (member.user_id) {
+    trace.push({ step: 'row0b_start', location_id: member.location_id, user_id: member.user_id });
+    const location = await fetchLocation(member.location_id);
+    if (!location) return { stopped: 'location_missing' };
+
+    const worker = await fetchProfile(member.user_id);
+    if (!worker) return { stopped: 'worker_missing' };
+
+    const msg = `You've been added to ${location.name} on Truvex. Open the app to start accepting shifts.`;
+    await pushAndLog(
+      [{ user_id: worker.id, token: worker.expo_push_token, phone: worker.phone }],
+      msg,
+      { location_id: member.location_id, type: 'worker_added' },
+      null,
+      'worker_added',
+      trace,
+    );
+    await sendWorkerAddedSms(worker.id, worker.phone, msg, member.location_id, trace);
+    return { done: true };
+  }
+
+  trace.push({ step: 'not_pending_invite' });
+  return { skipped: 'not_pending_invite' };
+}
+
+// Sends SMS unconditionally for row 0b (worker added to location).
+// Push alone isn't reliable for re-invitations — the token may be stale
+// if the worker deleted the app or hasn't used it in months.
+async function sendWorkerAddedSms(userId: string, phone: string | null, body: string, locationId: string, trace: any[]) {
+  if (!phone) return;
   try {
-    await sendSms(member.invited_phone, msg);
-    trace.push({ step: 'row0_sent' });
-    console.log(`[sms] worker invited location=${member.location_id} phone=…${member.invited_phone.slice(-4)}`);
+    await sendSms(phone, body);
+    await supabase.schema('truvex').from('notification_log').insert({
+      user_id: userId,
+      callout_id: null,
+      channel: 'sms',
+      type: 'worker_added',
+      body,
+    });
+    trace.push({ step: 'row0b_sms_sent' });
+    console.log(`[sms] row0b unconditional user=${userId}`);
   } catch (err) {
-    trace.push({ step: 'row0_failed', error: String(err) });
-    console.error(`[sms] worker invited failed:`, err);
+    trace.push({ step: 'row0b_sms_failed', error: String(err) });
+    console.error(`[sms] row0b unconditional failed:`, err);
   }
-
-  return { done: true };
 }
 
 // =====================================================================

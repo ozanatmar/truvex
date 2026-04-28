@@ -33,6 +33,7 @@ serve(async (_req) => {
       handleNoResponseEscalation(now, trace),
       handleOneHourReminder(now, trace),
       handleSmsFallback(now, trace),
+      handleExpireStaleCallouts(now, trace),
     ]);
     return new Response(JSON.stringify({ ok: true, invocationId, trace }), {
       status: 200,
@@ -268,6 +269,25 @@ async function handleSmsFallback(now: Date, trace: any[]) {
       console.error(`[auto-assign sms] fallback failed type=${log.type} user=${log.user_id}:`, err);
     }
   }
+}
+
+// =====================================================================
+// Expire stale callouts: open or pending_selection past their shift date
+// =====================================================================
+async function handleExpireStaleCallouts(now: Date, trace: any[]) {
+  const today = now.toISOString().slice(0, 10);
+  const { data: stale } = await supabase
+    .schema('truvex').from('callouts')
+    .select('id')
+    .in('status', ['open', 'pending_selection'])
+    .lt('shift_date', today);
+
+  if (!stale || stale.length === 0) return;
+  trace.push({ step: 'expire_stale', count: stale.length });
+
+  await supabase.schema('truvex').from('callouts')
+    .update({ status: 'expired' })
+    .in('id', stale.map((c: any) => c.id));
 }
 
 // =====================================================================

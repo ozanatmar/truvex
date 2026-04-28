@@ -125,6 +125,7 @@ export default function ManageRolesSheet({ visible, onClose, onSaved }: Props) {
           </TouchableOpacity>
         </View>
 
+
         <View style={styles.intro}>
           <Text style={styles.subtitle}>
             These are the roles at your restaurant. Edit as needed.
@@ -143,7 +144,9 @@ export default function ManageRolesSheet({ visible, onClose, onSaved }: Props) {
             <View key={role} style={styles.roleRow}>
               <Text style={styles.roleName}>{role}</Text>
               <TouchableOpacity onPress={() => removeRole(role)}>
-                <Text style={styles.removeText}>Remove</Text>
+                <View style={styles.removeButton}>
+                  <Text style={styles.removeText}>Remove</Text>
+                </View>
               </TouchableOpacity>
             </View>
           ))}
@@ -159,12 +162,10 @@ export default function ManageRolesSheet({ visible, onClose, onSaved }: Props) {
                 returnKeyType="done"
                 onSubmitEditing={addRole}
               />
-              <TouchableOpacity
-                style={[styles.addButton, !newRole.trim() && styles.addButtonDisabled]}
-                onPress={addRole}
-                disabled={!newRole.trim()}
-              >
-                <Text style={styles.addButtonText}>Add</Text>
+              <TouchableOpacity onPress={addRole} disabled={!newRole.trim()}>
+                <View style={[styles.addButton, !newRole.trim() && styles.addButtonDisabled]}>
+                  <Text style={styles.addButtonText}>Add</Text>
+                </View>
               </TouchableOpacity>
             </View>
           )}
@@ -189,9 +190,9 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     backgroundColor: '#1a1a2e',
   },
-  cancel: { color: '#7A8899', fontSize: 16 },
-  title: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  save: { color: '#0E7C7B', fontSize: 16, fontWeight: '700' },
+  cancel: { color: '#7A8899', fontSize: 16, minWidth: 60 },
+  title: { flex: 1, color: '#fff', fontSize: 17, fontWeight: '700', textAlign: 'center' },
+  save: { color: '#0E7C7B', fontSize: 16, fontWeight: '700', minWidth: 60, textAlign: 'right' },
   saveDisabled: { opacity: 0.4 },
   intro: {
     paddingHorizontal: 32,
@@ -205,22 +206,29 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: {
     paddingHorizontal: 32,
-    gap: 12,
+    paddingTop: 8,
     paddingBottom: 40,
   },
   roleRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: '#2a2a40',
     borderRadius: 10,
-    paddingHorizontal: 16,
+    paddingLeft: 16,
     paddingVertical: 14,
+    marginBottom: 12,
   },
   roleName: {
+    flex: 1,
     fontSize: 16,
     color: '#fff',
     fontWeight: '500',
+  },
+  removeButton: {
+    paddingLeft: 16,
+    paddingRight: 24,
+    paddingVertical: 4,
+    minWidth: 100,
   },
   removeText: {
     color: '#ef4444',
@@ -229,7 +237,6 @@ const styles = StyleSheet.create({
   },
   addRow: {
     flexDirection: 'row',
-    gap: 10,
     marginTop: 8,
   },
   addInput: {
@@ -240,14 +247,16 @@ const styles = StyleSheet.create({
     height: 44,
     color: '#fff',
     fontSize: 15,
+    marginRight: 10,
   },
   addButton: {
     backgroundColor: '#0E7C7B',
     borderRadius: 10,
-    paddingHorizontal: 20,
+    paddingLeft: 24,
+    paddingRight: 32,
     height: 44,
-    alignItems: 'center',
     justifyContent: 'center',
+    minWidth: 90,
   },
   addButtonDisabled: {
     opacity: 0.4,
@@ -255,5 +264,6 @@ const styles = StyleSheet.create({
   addButtonText: {
     color: '#fff',
     fontWeight: '700',
+    textAlign: 'center',
   },
 });

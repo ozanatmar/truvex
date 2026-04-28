@@ -14,14 +14,27 @@ import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../lib/store';
 
+// Detects URL-like patterns that US carriers flag in SMS (error 30007).
+// Catches "truvex.app", "company.com", "http://..." but allows "St. Louis",
+// "Corp.", "A.I. Kitchen" (dot followed by space or end of string).
+function looksLikeUrl(text: string): boolean {
+  return /https?:\/\//i.test(text) || /\bwww\./i.test(text) || /\.\w{2,6}(\s|\/|$)/.test(text);
+}
+
 export default function RestaurantScreen() {
   const router = useRouter();
   const { session, setActiveLocation, setMemberType } = useStore();
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [nameError, setNameError] = useState('');
+
+  function handleNameChange(v: string) {
+    setName(v);
+    setNameError(looksLikeUrl(v) ? 'Name cannot contain a website address.' : '');
+  }
 
   async function handleContinue() {
-    if (!name.trim() || !session) return;
+    if (!name.trim() || !session || looksLikeUrl(name)) return;
     setLoading(true);
 
     // Trial-once-per-phone is gated by profiles.trial_used_at inside the
@@ -95,18 +108,19 @@ export default function RestaurantScreen() {
         <TextInput
           style={styles.input}
           value={name}
-          onChangeText={setName}
+          onChangeText={handleNameChange}
           placeholder="e.g. The Rustic Table"
           placeholderTextColor="#555"
           autoFocus
           returnKeyType="done"
           onSubmitEditing={handleContinue}
         />
+        {nameError ? <Text style={styles.errorText}>{nameError}</Text> : null}
 
         <TouchableOpacity
-          style={[styles.button, !name.trim() && styles.buttonDisabled]}
+          style={[styles.button, (!name.trim() || !!nameError) && styles.buttonDisabled]}
           onPress={handleContinue}
-          disabled={!name.trim() || loading}
+          disabled={!name.trim() || !!nameError || loading}
         >
           {loading ? (
             <ActivityIndicator color="#fff" />
@@ -162,6 +176,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     fontSize: 18,
     color: '#fff',
+  },
+  errorText: {
+    fontSize: 13,
+    color: '#ef4444',
+    marginTop: -8,
   },
   button: {
     backgroundColor: '#0E7C7B',

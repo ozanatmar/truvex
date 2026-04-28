@@ -48,6 +48,14 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+    // Block URL-like names — they trigger carrier SMS filtering (error 30007)
+    // when the location name appears in notification messages.
+    if (/https?:\/\//i.test(name) || /\bwww\./i.test(name) || /\.\w{2,6}(\s|\/|$)/.test(name)) {
+      return new Response(JSON.stringify({ error: 'Location name cannot contain a website address.' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // Profile must exist before we claim the trial. If handle_new_user hasn't
     // finished on a fresh signup (or the row was wiped), fail loudly instead

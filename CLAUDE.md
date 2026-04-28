@@ -121,6 +121,19 @@ Font package: `@expo-google-fonts/dm-sans` (in `package.json`). Loaded once in `
 - Inputs, action chips, small buttons: `borderRadius: 10–12`
 - Modal sheets: `borderRadius: 20` (top corners only)
 
+### Android text rendering rules (applies to all screens)
+
+These rules prevent text clipping on older Android devices (tested on Moto G4, Android 6/7):
+
+- **Never use `overflow: 'hidden'` on a card or container that holds `Text`.** This is the root cause of clipped text on old Android. `borderRadius` alone is sufficient to round the card — no `overflow` needed. See `settings.tsx` and `(manager)/index.tsx` as the canonical patterns.
+- **Minimum `paddingVertical: 4` on any badge or chip that contains text.** `paddingVertical: 2` clips small text (11–12px) on Android.
+- **Never use `borderWidth` (including `borderTopWidth`, `borderBottomWidth`, etc.) on any View that contains `Text`.** On old Android, any border on a View creates a clipping layer even without `overflow: 'hidden'`. For dividers between sections, use a separate `<View style={{ height: 1, backgroundColor: '#2a2a40' }} />` element instead of `borderTopWidth` on the container. For chips/badges, use `backgroundColor` only — no border. See role chips in `AddWorkerSheet` / `EditWorkerSheet` and the divider in `team/index.tsx` for the correct patterns.
+- **`borderRadius` must not exceed half the View's height on any View containing `Text`.** When borderRadius > height/2, Android clips the content area. Chips at fontSize 13 with paddingVertical 8 are ~32dp tall — use `borderRadius: 10`, not `borderRadius: 20`. Reserve large border radius (20+) for taller elements (height > 40dp).
+- **Never apply visual styles (backgroundColor, borderRadius) directly to `TouchableOpacity`.** On old Android, `TouchableOpacity` creates an animated compositing layer that clips its children. Always put visual styles on an inner `View`, keeping the `TouchableOpacity` as a bare wrapper with only `onPress`. Pattern: `<TouchableOpacity onPress={...}><View style={styles.chip}>...</View></TouchableOpacity>`.
+- **Never use `gap` in a `flexWrap: 'wrap'` container.** On old Android, `gap` in a wrapping flex layout incorrectly subtracts the gap value from each item's measured width, making every chip/tag narrower than its content and clipping text. Use `marginRight` + `marginBottom` on each item instead.
+- **Chip/tag text on old Android clips at the Text component's own measured boundary, not the container.** Increasing container `paddingRight` does not fix it. The only reliable fix is appending a single trailing space to the text string: `{role.name + ' '}`. This extends the Text's measured width by one character, preventing the clip. Apply this to any short text rendered inside a chip/tag on old Android.
+- **Use `minWidth` on text inside `flexDirection: 'row'` / `justifyContent: 'space-between'` layouts** to prevent text being squeezed when siblings compete for space. Give the center/flexible element `flex: 1, textAlign: 'center'`. Give fixed-size edge elements `minWidth`. No `lineHeight` needed.
+
 ### Landing page sync
 The landing page CSS variables (`landing/index.html`) map directly to these tokens:
 - `--color-primary` → `C.primary` (`#0E7C7B`)
@@ -443,9 +456,12 @@ create table truvex.shift_presets (
 
 Row 0 (invite) is the exception: it fires on **all tiers** because workers need to know to download the app before any callout notifications can reach them. It is SMS-only (no push token exists yet) and is not logged to `notification_log` (the invited worker has no profile row yet).
 
+Row 0b (existing user, new location) also fires on **all tiers**. The worker has an account but may not have opened the app in months — they need to know they were added. Push is sent if a token exists; SMS is sent immediately if no push token.
+
 | # | Trigger | Recipient | Message | SMS |
 |---|---|---|---|---|
-| 0 | Manager adds worker by phone number (pending invite) | Invited worker's phone | "You've been invited to join [Location] on Truvex. Sign in with this number to start accepting shifts." | Yes (all tiers) |
+| 0 | Manager adds worker by phone number (pending invite — no Truvex account yet) | Invited worker's phone | "You've been invited to join [Location] on Truvex. Download the Truvex app and sign in with this number to accept shifts." | Yes (all tiers, SMS only — no push token yet) |
+| 0b | Manager adds existing Truvex user to a new location | The added worker | "You've been added to [Location] on Truvex. Open the app to start accepting shifts." | Yes (all tiers — SMS if no push token) |
 | 1 | Callout posted | Eligible workers (matching role, not muted, active) | "New shift: [Role] on [date] [start]–[end]. Open Truvex to accept." | Yes |
 | 2 | First worker accepts (instant) | Manager | "[Worker] accepted the [Role] shift on [date] at [start]. Tap to confirm who covers." | Yes |
 | 3 | 15 min, no acceptors | Manager | "No one has accepted the [Role] shift on [date] at [start] yet. You may want to reach out or post again." | Yes |

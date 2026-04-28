@@ -36,3 +36,6 @@ auth_token = "env(TWILIO_AUTH_TOKEN)"
 
 [functions.send-notification]
 verify_jwt = false
+
+[functions.auto-assign]
+verify_jwt = false

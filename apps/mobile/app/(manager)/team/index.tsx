@@ -102,6 +102,24 @@ export default function TeamScreen() {
     fetchWorkers();
   }, [fetchWorkers]));
 
+  useEffect(() => {
+    if (!activeLocation) return;
+    const channel = supabase
+      .channel(`team-members-${activeLocation.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'truvex',
+          table: 'location_members',
+          filter: `location_id=eq.${activeLocation.id}`,
+        },
+        () => fetchWorkers(),
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [activeLocation?.id, fetchWorkers]);
+
   async function handleRemove(memberRowId: string, userId: string | null, workerName: string) {
     Alert.alert(
       `Remove ${workerName}?`,
@@ -143,7 +161,7 @@ export default function TeamScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={styles.title}>Team</Text>
           <Text style={styles.workerCount}>{workers.length} worker{workers.length !== 1 ? 's' : ''}</Text>
         </View>
@@ -195,36 +213,36 @@ export default function TeamScreen() {
 
             return (
               <View key={worker.id} style={styles.card}>
-                <TouchableOpacity
-                  style={styles.cardMain}
-                  onPress={() => setEditWorkerId(worker.id)}
-                >
-                  <View style={styles.workerInfo}>
-                    <View style={styles.nameRow}>
-                      <Text style={styles.workerName}>{worker.name ?? formatPhoneDisplay(worker.phone)}</Text>
-                      {worker.member.status === 'pending' && (
-                        <View style={styles.pendingBadge}>
-                          <Text style={styles.pendingText}>Pending</Text>
-                        </View>
+                <TouchableOpacity onPress={() => setEditWorkerId(worker.id)}>
+                  <View style={styles.cardMain}>
+                    <View style={styles.workerInfo}>
+                      <View style={styles.nameRow}>
+                        <Text style={styles.workerName}>{worker.name ?? formatPhoneDisplay(worker.phone)}</Text>
+                        {worker.member.status === 'pending' && (
+                          <View style={styles.pendingBadge}>
+                            <Text style={styles.pendingText}>Pending</Text>
+                          </View>
+                        )}
+                        {worker.member.is_muted && (
+                          <View style={styles.mutedBadge}>
+                            <Text style={styles.mutedText}>Muted</Text>
+                          </View>
+                        )}
+                      </View>
+                      {primaryRole && <Text style={styles.roleText}>{primaryRole}</Text>}
+                      {additionalRoles.length > 0 && (
+                        <Text style={styles.additionalRoles}>Also: {additionalRoles.join(', ')}</Text>
                       )}
-                      {worker.member.is_muted && (
-                        <View style={styles.mutedBadge}>
-                          <Text style={styles.mutedText}>Muted</Text>
-                        </View>
-                      )}
+                      <Text style={styles.phoneText}>{formatPhoneDisplay(worker.phone)}</Text>
                     </View>
-                    {primaryRole && <Text style={styles.roleText}>{primaryRole}</Text>}
-                    {additionalRoles.length > 0 && (
-                      <Text style={styles.additionalRoles}>Also: {additionalRoles.join(', ')}</Text>
-                    )}
-                    <Text style={styles.phoneText}>{formatPhoneDisplay(worker.phone)}</Text>
                   </View>
                 </TouchableOpacity>
 
+                <View style={styles.divider} />
                 <View style={styles.cardActions}>
                   <View style={styles.actionButton}>
                     <Text style={styles.actionText}>
-                      {worker.member.is_muted ? 'Muted' : 'Notifications on'}
+                      {worker.member.is_muted ? 'Muted' : 'Active'}
                     </Text>
                   </View>
                   <TouchableOpacity
@@ -261,36 +279,35 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5853F',
     borderRadius: 10,
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 10,
+    flexShrink: 0,
   },
-  addButtonText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  addButtonText: { color: '#fff', fontWeight: '700', fontSize: 14, minWidth: 60, textAlign: 'center' },
   scroll: { flex: 1 },
   content: { padding: 16, gap: 10 },
   empty: { alignItems: 'center', paddingTop: 80, gap: 8 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
   emptySubtitle: { fontSize: 14, color: '#666' },
-  card: { backgroundColor: '#1a1a2e', borderRadius: 18, overflow: 'hidden' },
+  card: { backgroundColor: '#1a1a2e', borderRadius: 18 },
   cardMain: { padding: 16 },
   workerInfo: { gap: 4 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  workerName: { fontSize: 16, fontWeight: '700', color: '#fff' },
-  pendingBadge: { backgroundColor: '#f59e0b22', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
-  pendingText: { color: '#f59e0b', fontSize: 11, fontWeight: '700' },
-  mutedBadge: { backgroundColor: '#6b728022', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
-  mutedText: { color: '#6b7280', fontSize: 11, fontWeight: '700' },
+  nameRow: { flexDirection: 'row', alignItems: 'center' },
+  workerName: { fontSize: 16, fontWeight: '700', color: '#fff', flexShrink: 1, minWidth: 80, marginRight: 8 },
+  pendingBadge: { backgroundColor: '#f59e0b22', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4, minWidth: 70 },
+  pendingText: { color: '#f59e0b', fontSize: 11, fontWeight: '700', textAlign: 'center' },
+  mutedBadge: { backgroundColor: '#6b728022', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4, minWidth: 56 },
+  mutedText: { color: '#6b7280', fontSize: 11, fontWeight: '700', textAlign: 'center' },
   roleText: { fontSize: 13, color: '#7A8899', fontWeight: '600' },
   additionalRoles: { fontSize: 12, color: '#555' },
   phoneText: { fontSize: 12, color: '#555', marginTop: 2 },
+  divider: { height: 1, backgroundColor: '#2a2a40' },
   cardActions: {
     flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: '#2a2a40',
   },
   actionButton: {
     flex: 1,
     paddingVertical: 12,
-    alignItems: 'center',
   },
-  actionText: { fontSize: 13, color: '#7A8899', fontWeight: '600' },
+  actionText: { fontSize: 13, color: '#7A8899', fontWeight: '600', textAlign: 'center' },
   removeText: { color: '#ef4444' },
 });

@@ -13,6 +13,7 @@ export default function ManagerLayout() {
         },
         tabBarActiveTintColor: '#0E7C7B',
         tabBarInactiveTintColor: '#666',
+        tabBarLabelStyle: { fontSize: 10 },
       }}
     >
       <Tabs.Screen

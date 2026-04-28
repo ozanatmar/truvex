@@ -498,29 +498,31 @@ export default function ManagerSettingsScreen() {
 
         {isSubscribed && tier !== 'business' && (status === 'active' || status === 'trialing') && (
           <TouchableOpacity
-            style={styles.actionButton}
             onPress={() => handleUpgrade('business')}
             disabled={subActionLoading !== null}
           >
-            {subActionLoading === 'upgrade' ? (
-              <ActivityIndicator color="#0E7C7B" />
-            ) : (
-              <Text style={styles.actionButtonText}>Upgrade to Business</Text>
-            )}
+            <View style={styles.actionButton}>
+              {subActionLoading === 'upgrade' ? (
+                <ActivityIndicator color="#0E7C7B" />
+              ) : (
+                <Text style={styles.actionButtonText}>Upgrade to Business</Text>
+              )}
+            </View>
           </TouchableOpacity>
         )}
 
         {(isSubscribed || status === 'past_due') && (
           <TouchableOpacity
-            style={styles.actionButton}
             onPress={handleManageSubscription}
             disabled={subActionLoading !== null}
           >
-            {subActionLoading === 'manage' ? (
-              <ActivityIndicator color="#0E7C7B" />
-            ) : (
-              <Text style={styles.actionButtonText}>Manage payment method</Text>
-            )}
+            <View style={styles.actionButton}>
+              {subActionLoading === 'manage' ? (
+                <ActivityIndicator color="#0E7C7B" />
+              ) : (
+                <Text style={styles.actionButtonText}>Manage payment method</Text>
+              )}
+            </View>
           </TouchableOpacity>
         )}
 
@@ -536,15 +538,16 @@ export default function ManagerSettingsScreen() {
 
         {status === 'cancelled' && (
           <TouchableOpacity
-            style={styles.actionButton}
             onPress={handleReactivateSubscription}
             disabled={subActionLoading !== null}
           >
-            {subActionLoading === 'reactivate' ? (
-              <ActivityIndicator color="#0E7C7B" />
-            ) : (
-              <Text style={styles.actionButtonText}>Reactivate subscription</Text>
-            )}
+            <View style={styles.actionButton}>
+              {subActionLoading === 'reactivate' ? (
+                <ActivityIndicator color="#0E7C7B" />
+              ) : (
+                <Text style={styles.actionButtonText}>Reactivate subscription</Text>
+              )}
+            </View>
           </TouchableOpacity>
         )}
       </View>
@@ -568,8 +571,10 @@ export default function ManagerSettingsScreen() {
         </View>
       </View>
 
-      <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-        <Text style={styles.signOutText}>Sign out</Text>
+      <TouchableOpacity onPress={handleSignOut}>
+        <View style={styles.signOutButton}>
+          <Text style={styles.signOutText}>Sign out</Text>
+        </View>
       </TouchableOpacity>
     </ScrollView>
 
@@ -628,8 +633,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingVertical: 14,
   },
-  planBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20 },
-  planBadgeText: { fontSize: 13, fontWeight: '700' },
+  planBadge: { paddingHorizontal: 16, paddingVertical: 4, borderRadius: 8, minWidth: 110 },
+  planBadgeText: { fontSize: 13, fontWeight: '700', textAlign: 'center' },
   trialNotice: { paddingBottom: 14, paddingTop: 4 },
   trialText: { fontSize: 13, color: '#888', lineHeight: 18 },
   upgradeCards: { flexDirection: 'row', gap: 12 },
@@ -643,12 +648,12 @@ const styles = StyleSheet.create({
   upgradeFeature: { fontSize: 12, color: '#666' },
   actionButton: {
     backgroundColor: '#1a1a2e', borderRadius: 12, paddingVertical: 14,
-    alignItems: 'center', borderWidth: 1, borderColor: '#2a2a40',
+    paddingHorizontal: 16,
   },
-  actionButtonText: { color: '#0E7C7B', fontSize: 15, fontWeight: '700' },
+  actionButtonText: { color: '#0E7C7B', fontSize: 15, fontWeight: '700', textAlign: 'center' },
   cancelSubText: { color: '#ef4444', fontSize: 13, textAlign: 'center', paddingVertical: 8 },
   deleteRestaurantText: { color: '#ef4444', fontSize: 13, textAlign: 'center', paddingVertical: 8 },
-  signOutButton: { margin: 20, alignItems: 'center', paddingVertical: 14 },
-  signOutText: { color: '#ef4444', fontSize: 15, fontWeight: '600' },
+  signOutButton: { margin: 20, paddingVertical: 14 },
+  signOutText: { color: '#ef4444', fontSize: 15, fontWeight: '600', textAlign: 'center' },
   chevron: { fontSize: 20, color: '#555' },
 });

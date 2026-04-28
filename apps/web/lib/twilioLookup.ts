@@ -59,6 +59,8 @@ export function isBlockedLineType(t: PhoneLineType): boolean {
 // real lines, so we exempt them from the VoIP gate. AUTH_TEST_PHONES is a
 // comma-separated list of E.164 numbers.
 export function isTestPhone(e164: string): boolean {
+  // Supabase test number range — not real assignable exchanges
+  if (e164.startsWith('+155500000')) return true;
   const raw = process.env.AUTH_TEST_PHONES;
   if (!raw) return false;
   return raw

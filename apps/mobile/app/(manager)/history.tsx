@@ -144,29 +144,30 @@ export default function ManagerHistoryScreen() {
           rows.map((r) => (
             <TouchableOpacity
               key={r.id}
-              style={styles.card}
               onPress={() => setSelectedId(r.id)}
               activeOpacity={0.7}
             >
-              <View style={styles.cardHeader}>
-                <View style={styles.titleRow}>
-                  <Text style={styles.roleName}>{r.role_name}</Text>
-                  {r.worker_label && (
-                    <Text style={styles.workerName} numberOfLines={1}>
-                      · {r.worker_label}
+              <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <View style={styles.titleRow}>
+                    <Text style={styles.roleName}>{r.role_name + '   '}</Text>
+                    {r.worker_label && (
+                      <Text style={styles.workerName} numberOfLines={1}>
+                        · {r.worker_label}
+                      </Text>
+                    )}
+                  </View>
+                  <View style={[styles.badge, { backgroundColor: STATUS_COLORS[r.status] + '22' }]}>
+                    <Text style={[styles.badgeText, { color: STATUS_COLORS[r.status] }]}>
+                      {capitalize(r.status.replace('_', ' '))}
                     </Text>
-                  )}
+                  </View>
                 </View>
-                <View style={[styles.badge, { backgroundColor: STATUS_COLORS[r.status] + '22' }]}>
-                  <Text style={[styles.badgeText, { color: STATUS_COLORS[r.status] }]}>
-                    {capitalize(r.status.replace('_', ' '))}
-                  </Text>
-                </View>
+                <Text style={styles.date}>{formatShiftDate(r.shift_date)}</Text>
+                <Text style={styles.time}>
+                  {formatShiftTime(r.start_time)} – {formatShiftTime(r.end_time)}
+                </Text>
               </View>
-              <Text style={styles.date}>{formatShiftDate(r.shift_date)}</Text>
-              <Text style={styles.time}>
-                {formatShiftTime(r.start_time)} – {formatShiftTime(r.end_time)}
-              </Text>
             </TouchableOpacity>
           ))
         )}
@@ -192,16 +193,16 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 24, fontWeight: '800', color: '#fff' },
   scroll: { flex: 1 },
-  content: { padding: 16, gap: 10 },
-  empty: { alignItems: 'center', paddingTop: 80, gap: 8 },
+  content: { padding: 16 },
+  empty: { alignItems: 'center', paddingTop: 80 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
-  emptySubtitle: { fontSize: 14, color: '#666' },
-  card: { backgroundColor: '#1a1a2e', borderRadius: 18, padding: 16, gap: 4 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, gap: 8 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', flexShrink: 1, gap: 6 },
-  roleName: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  emptySubtitle: { fontSize: 14, color: '#666', marginTop: 8 },
+  card: { backgroundColor: '#1a1a2e', borderRadius: 18, padding: 16, marginBottom: 10 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', flexShrink: 1 },
+  roleName: { fontSize: 16, fontWeight: '700', color: '#fff', flexShrink: 0, marginRight: 6 },
   workerName: { fontSize: 14, color: '#aaa', fontWeight: '500', flexShrink: 1 },
-  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   badgeText: { fontSize: 11, fontWeight: '700', minWidth: 60, textAlign: 'center' },
   date: { fontSize: 13, color: '#aaa' },
   time: { fontSize: 13, color: '#ccc', fontWeight: '600' },

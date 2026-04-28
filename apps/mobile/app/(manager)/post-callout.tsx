@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -34,8 +34,12 @@ function formatTimeDisplay(t: string): string {
   return `${hour}:${String(m).padStart(2, '0')} ${ampm}`;
 }
 
+function dateToLocalYMD(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function todayDate(): string {
-  return new Date().toISOString().split('T')[0];
+  return dateToLocalYMD(new Date());
 }
 
 function parseDateStr(s: string): Date {
@@ -188,11 +192,13 @@ export default function PostCalloutScreen() {
             <View style={styles.presetRow}>
               {presets.map((p) => (
                 <View key={p.id} style={styles.presetChipWrap}>
-                  <TouchableOpacity style={styles.presetChip} onPress={() => applyPreset(p)}>
-                    <Text style={styles.presetLabel}>{p.label}</Text>
-                    <Text style={styles.presetTime}>
-                      {formatTimeDisplay(p.start_time)} – {formatTimeDisplay(p.end_time)}
-                    </Text>
+                  <TouchableOpacity onPress={() => applyPreset(p)}>
+                    <View style={styles.presetChip}>
+                      <Text style={styles.presetLabel}>{p.label}</Text>
+                      <Text style={styles.presetTime}>
+                        {formatTimeDisplay(p.start_time)} – {formatTimeDisplay(p.end_time)}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.presetDelete} onPress={() => handleDeletePreset(p.id)}>
                     <Text style={styles.presetDeleteText}>×</Text>
@@ -215,12 +221,14 @@ export default function PostCalloutScreen() {
           {roles.map((role) => (
             <TouchableOpacity
               key={role.id}
-              style={[styles.roleChip, roleId === role.id && styles.roleChipSelected]}
               onPress={() => setRoleId(role.id)}
+              style={styles.roleChipWrap}
             >
-              <Text style={[styles.roleChipText, roleId === role.id && styles.roleChipTextSelected]}>
-                {role.name}
-              </Text>
+              <View style={[styles.roleChip, roleId === role.id && styles.roleChipSelected]}>
+                <Text style={[styles.roleChipText, roleId === role.id && styles.roleChipTextSelected]}>
+                  {role.name + '  '}
+                </Text>
+              </View>
             </TouchableOpacity>
           ))}
         </View>
@@ -245,7 +253,7 @@ export default function PostCalloutScreen() {
             mode="date"
             display={pickerDisplay}
             minimumDate={new Date()}
-            onChange={(_, d) => { if (d) setShiftDate(d.toISOString().split('T')[0]); if (Platform.OS === 'android') setShowDatePicker(false); }}
+            onChange={(_, d) => { if (d) setShiftDate(dateToLocalYMD(d)); if (Platform.OS === 'android') setShowDatePicker(false); }}
             style={styles.picker}
           />
         </PickerModal>
@@ -322,9 +330,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16, backgroundColor: '#1a1a2e',
   },
-  cancel: { color: '#7A8899', fontSize: 16 },
-  title: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  post: { color: '#0E7C7B', fontSize: 16, fontWeight: '700' },
+  cancel: { color: '#7A8899', fontSize: 16, minWidth: 60 },
+  title: { color: '#fff', fontSize: 17, fontWeight: '700', flex: 1, textAlign: 'center' },
+  post: { color: '#0E7C7B', fontSize: 16, fontWeight: '700', minWidth: 60, textAlign: 'right' },
   postDisabled: { opacity: 0.4 },
   scroll: { flex: 1 },
   content: { padding: 20, gap: 10 },
@@ -336,10 +344,10 @@ const styles = StyleSheet.create({
   pickerButtonText: { color: '#fff', fontSize: 15 },
   timeRow: { flexDirection: 'row', gap: 12 },
   timeField: { flex: 1 },
-  presetRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, paddingTop: 8, paddingRight: 8 },
-  presetChipWrap: { position: 'relative' },
+  presetRow: { flexDirection: 'row', flexWrap: 'wrap', paddingTop: 8, paddingRight: 8 },
+  presetChipWrap: { position: 'relative', marginRight: 12, marginBottom: 12 },
   presetChip: {
-    backgroundColor: '#1a1a2e', borderWidth: 1, borderColor: '#0E7C7B',
+    backgroundColor: 'rgba(14,124,123,0.15)',
     borderRadius: 10, paddingLeft: 12, paddingRight: 14, paddingVertical: 8,
   },
   presetLabel: { color: '#7ECACA', fontSize: 12, fontWeight: '700' },
@@ -354,9 +362,10 @@ const styles = StyleSheet.create({
   presetDeleteText: { color: '#fff', fontSize: 14, fontWeight: '800', lineHeight: 16 },
   savePresetLink: { color: '#0E7C7B', fontSize: 13, fontWeight: '600', marginTop: 4 },
   nextDayNote: { color: '#f59e0b', fontSize: 13, fontWeight: '600', marginTop: 2 },
-  roleGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  roleChip: { borderWidth: 1, borderColor: '#333', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
-  roleChipSelected: { backgroundColor: '#0E7C7B', borderColor: '#0E7C7B' },
+  roleGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  roleChipWrap: { marginRight: 8, marginBottom: 8 },
+  roleChip: { backgroundColor: '#2a2a40', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
+  roleChipSelected: { backgroundColor: '#0E7C7B' },
   roleChipText: { color: '#888', fontSize: 14, fontWeight: '600' },
   roleChipTextSelected: { color: '#fff' },
   input: { backgroundColor: '#1a1a2e', borderRadius: 10, height: 48, paddingHorizontal: 14, color: '#fff', fontSize: 15 },

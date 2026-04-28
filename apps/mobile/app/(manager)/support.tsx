@@ -66,11 +66,10 @@ export default function SupportScreen() {
           <Text style={styles.gateBody}>
             Direct support is available on Pro and Business plans. Free plan users can find help at truvex.app/help.
           </Text>
-          <TouchableOpacity
-            style={styles.upgradeButton}
-            onPress={() => Linking.openURL('https://truvex.app/help')}
-          >
-            <Text style={styles.upgradeButtonText}>Visit Help Center</Text>
+          <TouchableOpacity onPress={() => Linking.openURL('https://truvex.app/help')}>
+            <View style={styles.upgradeButton}>
+              <Text style={styles.upgradeButtonText}>Visit Help Center</Text>
+            </View>
           </TouchableOpacity>
         </View>
       </View>
@@ -90,11 +89,10 @@ export default function SupportScreen() {
           <Text style={styles.gateBody}>
             Pro plan includes email support. We typically respond within 24 hours.
           </Text>
-          <TouchableOpacity
-            style={styles.emailButton}
-            onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=Truvex Support — ${encodeURIComponent(activeLocation?.name ?? '')}`)}
-          >
-            <Text style={styles.emailButtonText}>{SUPPORT_EMAIL}</Text>
+          <TouchableOpacity onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=Truvex Support — ${encodeURIComponent(activeLocation?.name ?? '')}`)}>
+            <View style={styles.emailButton}>
+              <Text style={styles.emailButtonText}>{SUPPORT_EMAIL}</Text>
+            </View>
           </TouchableOpacity>
           <Text style={styles.upgradeHint}>
             Upgrade to Business for in-app support with faster responses.
@@ -135,15 +133,16 @@ export default function SupportScreen() {
         />
 
         <TouchableOpacity
-          style={[styles.submitButton, (!message.trim() || loading) && styles.submitButtonDisabled]}
           onPress={handleSubmit}
           disabled={!message.trim() || loading}
         >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.submitButtonText}>Send message</Text>
-          )}
+          <View style={[styles.submitButton, (!message.trim() || loading) && styles.submitButtonDisabled]}>
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.submitButtonText}>Send message</Text>
+            )}
+          </View>
         </TouchableOpacity>
 
         <Text style={styles.responseNote}>Responses are sent via SMS to {session?.user?.phone ?? 'your phone'}.</Text>
@@ -163,10 +162,10 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     backgroundColor: '#1a1a2e',
   },
-  title: { fontSize: 24, fontWeight: '800', color: '#fff' },
+  title: { fontSize: 24, fontWeight: '800', color: '#fff', flex: 1 },
   businessBadge: {
     backgroundColor: '#10b98122',
-    borderRadius: 20,
+    borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 4,
   },
@@ -174,31 +173,31 @@ const styles = StyleSheet.create({
 
   // Gate / email states
   gateContainer: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 32, gap: 16,
+    flex: 1, justifyContent: 'center',
+    paddingHorizontal: 32,
   },
-  gateIcon: { fontSize: 52 },
-  gateTitle: { fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center' },
-  gateBody: { fontSize: 15, color: '#7A8899', textAlign: 'center', lineHeight: 22 },
+  gateIcon: { fontSize: 52, textAlign: 'center', marginBottom: 16 },
+  gateTitle: { fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 12 },
+  gateBody: { fontSize: 15, color: '#7A8899', textAlign: 'center', lineHeight: 22, marginBottom: 12 },
   upgradeButton: {
     backgroundColor: '#F5853F', borderRadius: 12,
     height: 52, paddingHorizontal: 28,
-    alignItems: 'center', justifyContent: 'center', marginTop: 8,
+    justifyContent: 'center', marginTop: 8, alignSelf: 'center', minWidth: 200,
   },
-  upgradeButtonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  upgradeButtonText: { color: '#fff', fontWeight: '700', fontSize: 15, textAlign: 'center' },
   emailButton: {
-    borderWidth: 1, borderColor: '#0E7C7B', borderRadius: 12,
+    backgroundColor: '#0E7C7B22', borderRadius: 12,
     height: 52, paddingHorizontal: 28,
-    alignItems: 'center', justifyContent: 'center', marginTop: 8,
+    justifyContent: 'center', marginTop: 8, alignSelf: 'center', minWidth: 240,
   },
-  emailButtonText: { color: '#0E7C7B', fontWeight: '700', fontSize: 15 },
-  upgradeHint: { fontSize: 12, color: '#555', textAlign: 'center' },
+  emailButtonText: { color: '#0E7C7B', fontWeight: '700', fontSize: 15, textAlign: 'center' },
+  upgradeHint: { fontSize: 12, color: '#555', textAlign: 'center', marginTop: 12 },
 
   // Business form
   scroll: { flex: 1 },
-  content: { padding: 20, gap: 14 },
-  formTitle: { fontSize: 20, fontWeight: '800', color: '#fff' },
-  formSubtitle: { fontSize: 14, color: '#7A8899', lineHeight: 20 },
+  content: { padding: 20 },
+  formTitle: { fontSize: 20, fontWeight: '800', color: '#fff', marginBottom: 8 },
+  formSubtitle: { fontSize: 14, color: '#7A8899', lineHeight: 20, marginBottom: 14 },
   textArea: {
     backgroundColor: '#1a1a2e',
     borderRadius: 12,
@@ -206,14 +205,13 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     minHeight: 140,
-    borderWidth: 1,
-    borderColor: '#2a2a40',
+    marginBottom: 14,
   },
   submitButton: {
     backgroundColor: '#F5853F', borderRadius: 12,
-    height: 52, alignItems: 'center', justifyContent: 'center',
+    height: 52, justifyContent: 'center', marginBottom: 14,
   },
   submitButtonDisabled: { opacity: 0.5 },
-  submitButtonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  submitButtonText: { color: '#fff', fontWeight: '700', fontSize: 15, textAlign: 'center' },
   responseNote: { fontSize: 12, color: '#555', textAlign: 'center' },
 });

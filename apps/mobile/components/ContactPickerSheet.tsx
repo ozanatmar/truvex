@@ -121,9 +121,12 @@ export default function ContactPickerSheet({ visible, onClose, onSelect }: Props
             onPress={onClose}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
-            <Text style={styles.closeText}>Cancel</Text>
+            <View style={styles.cancelButton}>
+              <Text style={styles.closeText}>Cancel</Text>
+            </View>
           </TouchableOpacity>
         </View>
+        <View style={styles.headerDivider} />
 
         <TextInput
           style={styles.search}
@@ -156,14 +159,16 @@ export default function ContactPickerSheet({ visible, onClose, onSelect }: Props
             {filtered.map((r) => (
               <TouchableOpacity
                 key={r.id}
-                style={styles.row}
                 onPress={() => {
                   onSelect({ name: r.name, digits: r.digits });
                   onClose();
                 }}
               >
-                <Text style={styles.rowName}>{r.name}</Text>
-                <Text style={styles.rowPhone}>{r.formattedPhone}</Text>
+                <View style={styles.row}>
+                  <Text style={styles.rowName}>{r.name}</Text>
+                  <Text style={styles.rowPhone}>{r.formattedPhone}</Text>
+                </View>
+                <View style={styles.rowDivider} />
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -180,12 +185,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    // paddingTop applied inline from safe-area inset + 16.
     paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2a2a40',
   },
-  title: { fontSize: 18, fontWeight: '800', color: '#fff' },
+  headerDivider: { height: 1, backgroundColor: '#2a2a40' },
+  title: { fontSize: 18, fontWeight: '800', color: '#fff', flex: 1 },
+  cancelButton: { paddingLeft: 16, paddingRight: 4, paddingVertical: 4, minWidth: 80 },
   closeText: { color: '#0E7C7B', fontSize: 16, fontWeight: '700' },
   search: {
     backgroundColor: '#2a2a40',
@@ -201,11 +205,9 @@ const styles = StyleSheet.create({
   row: {
     paddingHorizontal: 20,
     paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1a1a2e',
-    gap: 2,
   },
-  rowName: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  rowDivider: { height: 1, backgroundColor: '#1a1a2e' },
+  rowName: { color: '#fff', fontSize: 16, fontWeight: '700', marginBottom: 2 },
   rowPhone: { color: '#7A8899', fontSize: 13 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   emptyText: { color: '#7A8899', fontSize: 14, textAlign: 'center' },

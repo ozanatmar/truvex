@@ -203,8 +203,10 @@ export default function AddWorkerSheet({ visible, onClose, onAdded, onOpenUpgrad
           </View>
 
           <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-            <TouchableOpacity style={styles.contactsButton} onPress={() => setShowContacts(true)}>
-              <Text style={styles.contactsButtonText}>Import from Contacts</Text>
+            <TouchableOpacity onPress={() => setShowContacts(true)}>
+              <View style={styles.contactsButton}>
+                <Text style={styles.contactsButtonText}>Import from Contacts</Text>
+              </View>
             </TouchableOpacity>
 
             <ContactPickerSheet
@@ -244,15 +246,16 @@ export default function AddWorkerSheet({ visible, onClose, onAdded, onOpenUpgrad
               {roles.map((role) => (
                 <TouchableOpacity
                   key={role.id}
-                  style={[styles.roleChip, primaryRoleId === role.id && styles.primaryChip]}
                   onPress={() => {
                     setPrimaryRoleId(role.id);
                     setAdditionalRoleIds((prev) => prev.filter((id) => id !== role.id));
                   }}
                 >
-                  <Text style={[styles.roleChipText, primaryRoleId === role.id && styles.primaryChipText]}>
-                    {role.name}
-                  </Text>
+                  <View style={[styles.roleChip, primaryRoleId === role.id && styles.primaryChip]}>
+                    <Text style={[styles.roleChipText, primaryRoleId === role.id && styles.primaryChipText]}>
+                      {role.name + '  '}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               ))}
             </View>
@@ -264,17 +267,18 @@ export default function AddWorkerSheet({ visible, onClose, onAdded, onOpenUpgrad
                 .map((role) => (
                   <TouchableOpacity
                     key={role.id}
-                    style={[styles.roleChip, additionalRoleIds.includes(role.id) && styles.additionalChip]}
                     onPress={() => toggleAdditionalRole(role.id)}
                   >
-                    <Text
-                      style={[
-                        styles.roleChipText,
-                        additionalRoleIds.includes(role.id) && styles.additionalChipText,
-                      ]}
-                    >
-                      {role.name}
-                    </Text>
+                    <View style={[styles.roleChip, additionalRoleIds.includes(role.id) && styles.additionalChip]}>
+                      <Text
+                        style={[
+                          styles.roleChipText,
+                          additionalRoleIds.includes(role.id) && styles.additionalChipText,
+                        ]}
+                      >
+                        {role.name + '  '}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
                 ))}
             </View>
@@ -296,11 +300,11 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     backgroundColor: '#1a1a2e',
   },
-  cancel: { color: '#7A8899', fontSize: 16 },
-  title: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  save: { color: '#F5853F', fontSize: 16, fontWeight: '700' },
+  cancel: { color: '#7A8899', fontSize: 16, minWidth: 60 },
+  title: { flex: 1, color: '#fff', fontSize: 17, fontWeight: '700', textAlign: 'center' },
+  save: { color: '#F5853F', fontSize: 16, fontWeight: '700', minWidth: 60, textAlign: 'right' },
   saveDisabled: { opacity: 0.4 },
-  content: { padding: 20, gap: 10 },
+  content: { padding: 20 },
   label: { fontSize: 13, fontWeight: '600', color: '#aaa', marginTop: 8, marginBottom: 4 },
   input: {
     backgroundColor: '#1a1a2e',
@@ -317,17 +321,17 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 14,
     height: 48,
-    gap: 8,
   },
-  countryCode: { fontSize: 15, color: '#fff', fontWeight: '600' },
+  countryCode: { fontSize: 15, color: '#fff', fontWeight: '600', marginRight: 8, minWidth: 30 },
   phoneInput: { flex: 1, fontSize: 15, color: '#fff' },
-  roleGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  roleGrid: { flexDirection: 'row', flexWrap: 'wrap' },
   roleChip: {
-    borderWidth: 1,
-    borderColor: '#333',
-    borderRadius: 20,
+    backgroundColor: '#2a2a40',
+    borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 8,
+    marginRight: 8,
+    marginBottom: 8,
   },
   primaryChip: { backgroundColor: '#0E7C7B', borderColor: '#0E7C7B' },
   additionalChip: { backgroundColor: 'rgba(14,124,123,0.15)', borderColor: '#0E7C7B' },
@@ -355,13 +359,12 @@ const styles = StyleSheet.create({
   },
   upgradeButtonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
   contactsButton: {
-    borderWidth: 1,
-    borderColor: '#0E7C7B',
+    backgroundColor: 'rgba(14,124,123,0.15)',
     borderRadius: 10,
     height: 44,
-    alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
+    minWidth: 220,
   },
-  contactsButtonText: { color: '#0E7C7B', fontWeight: '700', fontSize: 14 },
+  contactsButtonText: { color: '#0E7C7B', fontWeight: '700', fontSize: 14, textAlign: 'center' },
 });

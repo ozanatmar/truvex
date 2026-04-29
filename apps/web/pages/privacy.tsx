@@ -71,6 +71,15 @@ export default function Privacy() {
               your employer through other channels.
             </p>
 
+            <h2>Device Contacts</h2>
+            <p>
+              If you are a manager, the app may request access to your device contacts to help you quickly
+              add workers to your team by selecting from your existing contacts. Contact data is used solely
+              to pre-fill the worker&rsquo;s name and phone number in the add-worker form. We do not upload,
+              store, or share your contact list with any third party. Contact access is optional — you can
+              add workers manually without granting this permission.
+            </p>
+
             <h2>Data Retention</h2>
             <p>
               Your account data is retained while your account is active. If you request account deletion,

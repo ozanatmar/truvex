@@ -32,7 +32,7 @@ module.exports = {
         foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#1a1a2e',
       },
-      package: 'app.truvex.mobile',
+      package: 'truvex.app',
       backgroundColor: '#0f0f1a',
       googleServicesFile: process.env.GOOGLE_SERVICES_JSON || './google-services.json',
       permissions: [
